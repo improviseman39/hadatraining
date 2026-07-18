@@ -113,10 +113,17 @@ export default function Setup2faForm() {
 
       <div className="my-6 flex justify-center">
         {qrCode && (
-          // Dynamic inline SVG data URI — next/image doesn't apply here.
+          // qrCode is already a complete `data:image/svg+xml;utf-8,...`
+          // URI as returned by Supabase — despite their own SDK doc
+          // comment implying you need to prepend that prefix yourself.
+          // Wrapping it in another data-URI layer (tried both
+          // `;utf-8,${encodeURIComponent(...)}` and
+          // `;base64,${btoa(...)}`) produced a broken nested URI both
+          // times. Use it as-is. next/image doesn't apply to a dynamic
+          // data URI like this.
           // eslint-disable-next-line @next/next/no-img-element
           <img
-            src={`data:image/svg+xml;utf-8,${encodeURIComponent(qrCode)}`}
+            src={qrCode}
             alt="Scan this QR code with your authenticator app"
             width={200}
             height={200}
