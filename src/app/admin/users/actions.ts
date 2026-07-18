@@ -51,6 +51,12 @@ export async function createUserDirect(formData: FormData) {
   const { error } = await admin.auth.admin.createUser({
     email,
     password,
+    // Must be true — Supabase's GoTrue hard-blocks signInWithPassword for
+    // any account with email_confirmed_at still null, regardless of the
+    // enable_confirmations config setting (that only affects self-signup).
+    // Real proof-of-ownership is handled entirely by our own OTP step
+    // (profiles.email_verified_at, checked in get_onboarding_status) —
+    // this flag only controls whether Supabase's own login even works.
     email_confirm: true,
     user_metadata: { role, invited_by: caller.id },
   });
@@ -67,10 +73,35 @@ export async function resetPassword(userId: string) {
   const password = generatePassword();
   const admin = createAdminClient();
   const { error } = await admin.auth.admin.updateUserById(userId, { password });
-
   if (error) return { error: error.message };
 
+  // A reset password is a new temporary one — same as initial account
+  // creation, it must be replaced before the account is usable again.
+  const supabase = createClient();
+  await supabase.from("profiles").update({ must_change_password: true }).eq("id", userId);
+
   return { success: true, password };
+}
+
+export async function resetUserMfa(userId: string) {
+  await requireRole(["super_admin"]);
+
+  const admin = createAdminClient();
+  const { data: factors, error: listError } = await admin.auth.admin.mfa.listFactors({
+    userId,
+  });
+  if (listError) return { error: listError.message };
+
+  for (const factor of factors?.factors ?? []) {
+    const { error } = await admin.auth.admin.mfa.deleteFactor({
+      id: factor.id,
+      userId,
+    });
+    if (error) return { error: error.message };
+  }
+
+  revalidatePath("/admin/users");
+  return { success: true };
 }
 
 async function superAdminCount(excluding?: string) {

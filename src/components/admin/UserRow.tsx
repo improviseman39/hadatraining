@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useTransition } from "react";
-import { changeRole, removeUser, resetPassword } from "@/app/admin/users/actions";
+import { changeRole, removeUser, resetPassword, resetUserMfa } from "@/app/admin/users/actions";
 
 type Profile = {
   id: string;
@@ -21,6 +21,7 @@ export default function UserRow({
   const [role, setRole] = useState(profile.role);
   const [error, setError] = useState<string | null>(null);
   const [newPassword, setNewPassword] = useState<string | null>(null);
+  const [mfaResetDone, setMfaResetDone] = useState(false);
   const [pending, startTransition] = useTransition();
 
   function handleRoleChange(newRole: Profile["role"]) {
@@ -51,6 +52,22 @@ export default function UserRow({
       const result = await resetPassword(profile.id);
       if (result?.error) setError(result.error);
       else if (result?.password) setNewPassword(result.password);
+    });
+  }
+
+  function handleResetMfa() {
+    if (
+      !window.confirm(
+        `Clear 2FA for ${profile.email}? They'll be asked to set up a new authenticator app next time they log in — use this if they've lost their device.`
+      )
+    )
+      return;
+    setError(null);
+    setMfaResetDone(false);
+    startTransition(async () => {
+      const result = await resetUserMfa(profile.id);
+      if (result?.error) setError(result.error);
+      else setMfaResetDone(true);
     });
   }
 
@@ -89,6 +106,14 @@ export default function UserRow({
           </button>
           <button
             type="button"
+            onClick={handleResetMfa}
+            disabled={pending}
+            className="rounded-full border border-ink/15 px-3 py-1 text-xs font-medium text-ink transition-colors hover:border-teal hover:text-teal disabled:opacity-30"
+          >
+            Reset 2FA
+          </button>
+          <button
+            type="button"
             onClick={handleRemove}
             disabled={pending || isSelf}
             className="rounded-full border border-ink/15 px-3 py-1 text-xs font-medium text-terracotta transition-colors hover:border-terracotta disabled:opacity-30"
@@ -100,6 +125,11 @@ export default function UserRow({
           <p className="mt-1.5 text-xs font-medium text-teal">
             New password: <code className="rounded bg-porcelain px-1.5 py-0.5 text-ink">{newPassword}</code>{" "}
             (copy it now, it won&apos;t be shown again)
+          </p>
+        )}
+        {mfaResetDone && (
+          <p className="mt-1.5 text-xs font-medium text-teal">
+            2FA cleared — they&apos;ll set up a new authenticator app on next login.
           </p>
         )}
       </td>
