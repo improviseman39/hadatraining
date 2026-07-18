@@ -1,0 +1,50 @@
+import type { SessionCategory } from "@/data/sessions";
+
+export type ContentBlock =
+  | { id: string; type: "video"; position: number; title: string | null; videoUrl: string | null }
+  | {
+      id: string;
+      type: "pdf";
+      position: number;
+      title: string | null;
+      pdfUrl: string | null;
+      pdfStoragePath: string | null;
+    }
+  | { id: string; type: "text"; position: number; title: string | null; body: string };
+
+export type Session = {
+  id: string;
+  slug: string;
+  title: string;
+  category: SessionCategory;
+  summary: string;
+  duration: string;
+  imageId: string;
+  isFree: boolean;
+  position: number;
+};
+
+export type SessionWithBlocks = Session & { blocks: ContentBlock[] };
+
+export type AnnouncementCategory = "Seminar" | "News" | "Event";
+
+export type Announcement = {
+  id: string;
+  category: AnnouncementCategory;
+  title: string;
+  description: string;
+  date: string;
+  imageId: string;
+  href: string | null;
+  position: number;
+};
+
+export type RequestStatus = "new" | "resolved";
+
+export type UserRequest = {
+  id: string;
+  userId: string;
+  message: string;
+  status: RequestStatus;
+  createdAt: string;
+};
