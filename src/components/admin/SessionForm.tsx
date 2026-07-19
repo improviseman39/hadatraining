@@ -3,6 +3,7 @@
 import { useState, useTransition } from "react";
 import Image from "next/image";
 import { unsplashUrl } from "@/data/sessions";
+import { useUnsavedChanges } from "@/components/admin/UnsavedChangesContext";
 
 const CATEGORIES = ["Foundations", "Injectables", "Devices", "Safety"] as const;
 
@@ -31,6 +32,7 @@ export default function SessionForm({
   const [saved, setSaved] = useState(false);
   const [imageId, setImageId] = useState(defaultValues?.image_id ?? "");
   const [pending, startTransition] = useTransition();
+  const unsaved = useUnsavedChanges();
 
   function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -40,12 +42,19 @@ export default function SessionForm({
     startTransition(async () => {
       const result = await action(formData);
       if (result?.error) setError(result.error);
-      else if (result?.success) setSaved(true);
+      else if (result?.success) {
+        setSaved(true);
+        unsaved?.setDirty("session-details", false);
+      }
     });
   }
 
   return (
-    <form onSubmit={handleSubmit} className="flex flex-col gap-5">
+    <form
+      onSubmit={handleSubmit}
+      onChange={() => unsaved?.setDirty("session-details", true)}
+      className="flex flex-col gap-5"
+    >
       <div className="grid grid-cols-1 gap-5 sm:grid-cols-2">
         <div>
           <label className="mb-1.5 block text-sm font-medium text-ink">Title</label>

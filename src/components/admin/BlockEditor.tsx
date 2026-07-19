@@ -4,6 +4,7 @@ import { useState, useTransition } from "react";
 import { addBlock, deleteBlock, moveBlock, updateBlock } from "@/app/admin/sessions/actions";
 import ConfirmSubmitButton from "@/components/admin/ConfirmSubmitButton";
 import VimeoUploadField from "@/components/admin/VimeoUploadField";
+import { useUnsavedChanges } from "@/components/admin/UnsavedChangesContext";
 
 type Block = {
   id: string;
@@ -99,6 +100,8 @@ function EditableBlockRow({ block, sessionId }: { block: Block; sessionId: strin
   const [error, setError] = useState<string | null>(null);
   const [videoUploading, setVideoUploading] = useState(false);
   const [pending, startTransition] = useTransition();
+  const unsaved = useUnsavedChanges();
+  const dirtyKey = `block-${block.id}`;
 
   function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -107,14 +110,26 @@ function EditableBlockRow({ block, sessionId }: { block: Block; sessionId: strin
     startTransition(async () => {
       const result = await updateBlock(block.id, formData);
       if (result?.error) setError(result.error);
-      else setEditing(false);
+      else {
+        setEditing(false);
+        unsaved?.setDirty(dirtyKey, false);
+      }
     });
+  }
+
+  function cancelEditing() {
+    setEditing(false);
+    unsaved?.setDirty(dirtyKey, false);
   }
 
   if (editing) {
     return (
       <li className="rounded-xl border border-teal/30 bg-teal/5 p-4">
-        <form onSubmit={handleSubmit} className="flex flex-col gap-3">
+        <form
+          onSubmit={handleSubmit}
+          onChange={() => unsaved?.setDirty(dirtyKey, true)}
+          className="flex flex-col gap-3"
+        >
           <span className="text-xs font-medium uppercase tracking-wide text-muted">
             Editing {typeLabels[block.type]} block
           </span>
@@ -135,7 +150,7 @@ function EditableBlockRow({ block, sessionId }: { block: Block; sessionId: strin
             </button>
             <button
               type="button"
-              onClick={() => setEditing(false)}
+              onClick={cancelEditing}
               className="rounded-full border border-ink/15 px-4 py-1.5 text-xs font-medium text-ink hover:border-teal"
             >
               Cancel
@@ -146,6 +161,13 @@ function EditableBlockRow({ block, sessionId }: { block: Block; sessionId: strin
     );
   }
 
+  const hasContent =
+    block.type === "video"
+      ? Boolean(block.video_url)
+      : block.type === "pdf"
+        ? Boolean(block.pdf_url || block.pdf_storage_path)
+        : Boolean(block.body);
+
   return (
     <li className="flex items-center justify-between gap-3 rounded-xl border border-ink/10 p-4">
       <div className="min-w-0">
@@ -154,6 +176,15 @@ function EditableBlockRow({ block, sessionId }: { block: Block; sessionId: strin
         </span>
         <span className="text-sm font-medium text-ink">
           {block.title ?? "(untitled)"}
+        </span>
+        <span className={`ml-2 text-xs font-medium ${hasContent ? "text-teal" : "text-terracotta"}`}>
+          {hasContent
+            ? block.type === "text"
+              ? "· has content"
+              : "· uploaded"
+            : block.type === "text"
+              ? "· empty"
+              : "· nothing uploaded yet"}
         </span>
       </div>
       <div className="flex shrink-0 items-center gap-1.5">
@@ -192,6 +223,7 @@ function AddBlockForm({ sessionId }: { sessionId: string }) {
   const [error, setError] = useState<string | null>(null);
   const [videoUploading, setVideoUploading] = useState(false);
   const [pending, startTransition] = useTransition();
+  const unsaved = useUnsavedChanges();
 
   function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -204,12 +236,17 @@ function AddBlockForm({ sessionId }: { sessionId: string }) {
       else {
         form.reset();
         setType("video");
+        unsaved?.setDirty("add-block", false);
       }
     });
   }
 
   return (
-    <form onSubmit={handleSubmit} className="flex flex-col gap-3 rounded-xl border border-dashed border-ink/20 p-4">
+    <form
+      onSubmit={handleSubmit}
+      onChange={() => unsaved?.setDirty("add-block", true)}
+      className="flex flex-col gap-3 rounded-xl border border-dashed border-ink/20 p-4"
+    >
       <span className="text-xs font-medium uppercase tracking-wide text-muted">Add block</span>
       <select
         name="type"
