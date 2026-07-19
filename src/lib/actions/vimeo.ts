@@ -85,18 +85,32 @@ export async function createVimeoUploadTicket(
 
   // Best-effort tightening/organizing — none of these should fail the
   // upload itself if the account's plan or folder setup doesn't cooperate.
+  // Every call is logged (success or failure) so problems show up directly
+  // in Vercel's function logs instead of requiring guesswork.
   await Promise.all([
     ...EMBED_DOMAINS.map((domain) =>
       fetch(`${VIMEO_API}/videos/${videoId}/privacy/domains/${domain}`, {
         method: "PUT",
         headers: VIMEO_HEADERS(token),
+      }).then(async (res) => {
+        if (!res.ok) {
+          console.error(`Vimeo domain-whitelist failed for ${domain} (${res.status}): ${await res.text()}`);
+        } else {
+          console.log(`Whitelisted embed domain: ${domain}`);
+        }
       })
     ),
     fetch(`${VIMEO_API}${uri}`, {
       method: "PATCH",
       headers: { ...VIMEO_HEADERS(token), "Content-Type": "application/json" },
       body: JSON.stringify({ privacy: { view: "disable" } }),
-    }).catch(() => null),
+    }).then(async (res) => {
+      if (!res.ok) {
+        console.error(`Vimeo set view=disable failed (${res.status}): ${await res.text()}`);
+      } else {
+        console.log(`Set view privacy to disable for ${uri}`);
+      }
+    }).catch((err) => console.error(`Vimeo set view=disable network error: ${err}`)),
     (async () => {
       const folderUri = await findHadaFolderUri(token);
       if (!folderUri) {
