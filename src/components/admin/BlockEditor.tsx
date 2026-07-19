@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useTransition } from "react";
-import { addBlock, deleteBlock, moveBlock, updateBlock } from "@/app/admin/sessions/actions";
+import { addBlock, deleteBlock, getPdfPreviewUrl, moveBlock, updateBlock } from "@/app/admin/sessions/actions";
 import ConfirmSubmitButton from "@/components/admin/ConfirmSubmitButton";
 import VimeoUploadField from "@/components/admin/VimeoUploadField";
 import { useUnsavedChanges } from "@/components/admin/UnsavedChangesContext";
@@ -22,6 +22,72 @@ const typeLabels: Record<Block["type"], string> = {
   pdf: "PDF",
   text: "Text",
 };
+
+/** Opens the block's current file so an admin can confirm what's actually attached. */
+function PreviewLink({ block }: { block: Block }) {
+  const [pending, startTransition] = useTransition();
+  const [error, setError] = useState<string | null>(null);
+
+  if (block.type === "video" && block.video_url) {
+    return (
+      <a
+        href={block.video_url}
+        target="_blank"
+        rel="noopener noreferrer"
+        className="text-xs font-medium text-teal underline underline-offset-2 hover:text-teal-dark"
+      >
+        ▶ Preview current video
+      </a>
+    );
+  }
+
+  if (block.type === "pdf" && (block.pdf_url || block.pdf_storage_path)) {
+    if (block.pdf_url) {
+      return (
+        <a
+          href={block.pdf_url}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="text-xs font-medium text-teal underline underline-offset-2 hover:text-teal-dark"
+        >
+          📄 View current PDF
+        </a>
+      );
+    }
+    return (
+      <span className="inline-flex items-center gap-2">
+        <button
+          type="button"
+          disabled={pending}
+          onClick={() => {
+            const storagePath = block.pdf_storage_path;
+            if (!storagePath) return;
+            setError(null);
+            startTransition(async () => {
+              try {
+                const result = await getPdfPreviewUrl(storagePath);
+                if ("error" in result) {
+                  setError(result.error ?? "Couldn't open that file.");
+                  return;
+                }
+                window.open(result.url, "_blank");
+              } catch (err) {
+                setError("Couldn't open that file.");
+                console.error("getPdfPreviewUrl failed:", err);
+              }
+            });
+          }}
+          className="text-xs font-medium text-teal underline underline-offset-2 hover:text-teal-dark disabled:opacity-60"
+        >
+          {pending ? "Opening…" : "📄 View current PDF"}
+        </button>
+        {error && <span className="text-xs font-medium text-terracotta">{error}</span>}
+      </span>
+    );
+  }
+
+  return null;
+}
 
 function BlockFields({
   type,
@@ -108,11 +174,15 @@ function EditableBlockRow({ block, sessionId }: { block: Block; sessionId: strin
     const formData = new FormData(event.currentTarget);
     setError(null);
     startTransition(async () => {
-      const result = await updateBlock(block.id, formData);
-      if (result?.error) setError(result.error);
-      else {
-        setEditing(false);
-        unsaved?.setDirty(dirtyKey, false);
+      try {
+        const result = await updateBlock(block.id, formData);
+        if (result?.error) setError(result.error);
+        else {
+          setEditing(false);
+          unsaved?.setDirty(dirtyKey, false);
+        }
+      } catch {
+        setError("Save failed — the file may be too large, or the connection dropped. Try again.");
       }
     });
   }
@@ -171,21 +241,28 @@ function EditableBlockRow({ block, sessionId }: { block: Block; sessionId: strin
   return (
     <li className="flex items-center justify-between gap-3 rounded-xl border border-ink/10 p-4">
       <div className="min-w-0">
-        <span className="mr-2 rounded-full border border-ink/10 px-2 py-0.5 text-[11px] font-medium uppercase tracking-wide text-muted">
-          {typeLabels[block.type]}
-        </span>
-        <span className="text-sm font-medium text-ink">
-          {block.title ?? "(untitled)"}
-        </span>
-        <span className={`ml-2 text-xs font-medium ${hasContent ? "text-teal" : "text-terracotta"}`}>
-          {hasContent
-            ? block.type === "text"
-              ? "· has content"
-              : "· uploaded"
-            : block.type === "text"
-              ? "· empty"
-              : "· nothing uploaded yet"}
-        </span>
+        <div>
+          <span className="mr-2 rounded-full border border-ink/10 px-2 py-0.5 text-[11px] font-medium uppercase tracking-wide text-muted">
+            {typeLabels[block.type]}
+          </span>
+          <span className="text-sm font-medium text-ink">
+            {block.title ?? "(untitled)"}
+          </span>
+          <span className={`ml-2 text-xs font-medium ${hasContent ? "text-teal" : "text-terracotta"}`}>
+            {hasContent
+              ? block.type === "text"
+                ? "· has content"
+                : "· uploaded"
+              : block.type === "text"
+                ? "· empty"
+                : "· nothing uploaded yet"}
+          </span>
+        </div>
+        {hasContent && block.type !== "text" && (
+          <div className="mt-1">
+            <PreviewLink block={block} />
+          </div>
+        )}
       </div>
       <div className="flex shrink-0 items-center gap-1.5">
         <form action={moveBlock.bind(null, block.id, sessionId, "up")}>
@@ -231,12 +308,16 @@ function AddBlockForm({ sessionId }: { sessionId: string }) {
     const formData = new FormData(form);
     setError(null);
     startTransition(async () => {
-      const result = await addBlock(sessionId, formData);
-      if (result?.error) setError(result.error);
-      else {
-        form.reset();
-        setType("video");
-        unsaved?.setDirty("add-block", false);
+      try {
+        const result = await addBlock(sessionId, formData);
+        if (result?.error) setError(result.error);
+        else {
+          form.reset();
+          setType("video");
+          unsaved?.setDirty("add-block", false);
+        }
+      } catch {
+        setError("Save failed — the file may be too large, or the connection dropped. Try again.");
       }
     });
   }

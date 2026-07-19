@@ -281,3 +281,16 @@ export async function moveBlock(
   revalidatePublicPages(session?.slug);
   revalidatePath(`/admin/sessions/${sessionId}`);
 }
+
+/** Lets an admin open the currently-attached PDF to confirm what's there before editing/replacing it. */
+export async function getPdfPreviewUrl(
+  storagePath: string
+): Promise<{ url: string; error?: undefined } | { error: string; url?: undefined }> {
+  await requireRole(["admin", "super_admin"]);
+  const supabase = createClient();
+  const { data, error } = await supabase.storage
+    .from(PDF_BUCKET)
+    .createSignedUrl(storagePath, 300);
+  if (error || !data) return { error: error?.message ?? "Couldn't open that file." };
+  return { url: data.signedUrl };
+}
