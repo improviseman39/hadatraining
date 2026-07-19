@@ -3,6 +3,7 @@
 import { useState, useTransition } from "react";
 import { addBlock, deleteBlock, moveBlock, updateBlock } from "@/app/admin/sessions/actions";
 import ConfirmSubmitButton from "@/components/admin/ConfirmSubmitButton";
+import VimeoUploadField from "@/components/admin/VimeoUploadField";
 
 type Block = {
   id: string;
@@ -39,17 +40,7 @@ function BlockFields({
           className="w-full rounded-lg border border-ink/15 bg-porcelain px-3 py-2 text-sm text-ink focus:border-teal focus:outline-none focus:ring-2 focus:ring-teal/30"
         />
       </div>
-      {type === "video" && (
-        <div>
-          <label className="mb-1.5 block text-xs font-medium text-ink">Vimeo player URL</label>
-          <input
-            name="video_url"
-            defaultValue={defaultValues?.video_url ?? ""}
-            placeholder="https://player.vimeo.com/video/…"
-            className="w-full rounded-lg border border-ink/15 bg-porcelain px-3 py-2 text-sm text-ink focus:border-teal focus:outline-none focus:ring-2 focus:ring-teal/30"
-          />
-        </div>
-      )}
+      {type === "video" && <VimeoUploadField defaultValue={defaultValues?.video_url} />}
       {type === "pdf" && (
         <>
           <div>
