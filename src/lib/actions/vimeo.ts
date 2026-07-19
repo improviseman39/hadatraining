@@ -4,10 +4,34 @@ import { requireRole } from "@/lib/auth/requireRole";
 
 const VIMEO_API = "https://api.vimeo.com";
 const EMBED_DOMAINS = ["hadatraining.com", "www.hadatraining.com"];
+const FOLDER_NAME = "HADA Training";
+const VIMEO_HEADERS = (token: string) => ({
+  Authorization: `Bearer ${token}`,
+  Accept: "application/vnd.vimeo.*+json;version=3.4",
+});
 
 type CreateTicketResult =
   | { uploadLink: string; playerUrl: string }
   | { error: string };
+
+/**
+ * Vimeo's API still calls folders "projects". Finds the folder this
+ * account's owner created by name so uploads land inside it instead of
+ * the root library — looked up by name each time rather than a hardcoded
+ * ID, so it keeps working if the folder is ever recreated.
+ */
+async function findHadaFolderUri(token: string): Promise<string | null> {
+  const res = await fetch(`${VIMEO_API}/me/projects?per_page=100`, {
+    headers: VIMEO_HEADERS(token),
+  });
+  if (!res.ok) return null;
+  const body = await res.json();
+  const folder = (body?.data ?? []).find(
+    (project: { name?: string; uri?: string }) =>
+      project.name?.trim().toLowerCase() === FOLDER_NAME.toLowerCase()
+  );
+  return folder?.uri ?? null;
+}
 
 /**
  * Creates a Vimeo video shell via the tus resumable-upload protocol and
@@ -30,9 +54,8 @@ export async function createVimeoUploadTicket(
   const createRes = await fetch(`${VIMEO_API}/me/videos`, {
     method: "POST",
     headers: {
-      Authorization: `Bearer ${token}`,
+      ...VIMEO_HEADERS(token),
       "Content-Type": "application/json",
-      Accept: "application/vnd.vimeo.*+json;version=3.4",
     },
     body: JSON.stringify({
       name: fileName,
@@ -55,17 +78,32 @@ export async function createVimeoUploadTicket(
   }
   const videoId = uri.replace("/videos/", "");
 
-  await Promise.all(
-    EMBED_DOMAINS.map((domain) =>
+  // Best-effort tightening/organizing — none of these should fail the
+  // upload itself if the account's plan or folder setup doesn't cooperate.
+  await Promise.all([
+    ...EMBED_DOMAINS.map((domain) =>
       fetch(`${VIMEO_API}/videos/${videoId}/privacy/domains/${domain}`, {
         method: "PUT",
-        headers: {
-          Authorization: `Bearer ${token}`,
-          Accept: "application/vnd.vimeo.*+json;version=3.4",
-        },
+        headers: VIMEO_HEADERS(token),
       })
-    )
-  );
+    ),
+    fetch(`${VIMEO_API}${uri}`, {
+      method: "PATCH",
+      headers: { ...VIMEO_HEADERS(token), "Content-Type": "application/json" },
+      body: JSON.stringify({ privacy: { view: "disable" } }),
+    }).catch(() => null),
+    (async () => {
+      const folderUri = await findHadaFolderUri(token);
+      if (!folderUri) {
+        console.error(`Vimeo folder "${FOLDER_NAME}" not found — video left in root library.`);
+        return;
+      }
+      await fetch(`${VIMEO_API}${folderUri}${uri}`, {
+        method: "PUT",
+        headers: VIMEO_HEADERS(token),
+      });
+    })(),
+  ]);
 
   return { uploadLink, playerUrl: `https://player.vimeo.com/video/${videoId}` };
 }

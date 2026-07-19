@@ -49,7 +49,11 @@ export default async function EditSessionPage({
         </div>
 
         <div>
-          <h3 className="mb-4 font-serif text-lg text-ink">Content blocks</h3>
+          <h3 className="mb-1 font-serif text-lg text-ink">Content blocks</h3>
+          <p className="mb-4 text-xs text-muted">
+            This is separate from &ldquo;Save changes&rdquo; on the left — each block below has
+            its own Save (or &ldquo;+ Add block&rdquo;) button that must be clicked to store it.
+          </p>
           <BlockEditor sessionId={session.id} blocks={blocks ?? []} />
         </div>
       </div>
