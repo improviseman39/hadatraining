@@ -25,9 +25,11 @@ const typeLabels: Record<Block["type"], string> = {
 function BlockFields({
   type,
   defaultValues,
+  onVideoUploadingChange,
 }: {
   type: Block["type"];
   defaultValues?: Partial<Block>;
+  onVideoUploadingChange?: (uploading: boolean) => void;
 }) {
   return (
     <>
@@ -40,7 +42,12 @@ function BlockFields({
           className="w-full rounded-lg border border-ink/15 bg-porcelain px-3 py-2 text-sm text-ink focus:border-teal focus:outline-none focus:ring-2 focus:ring-teal/30"
         />
       </div>
-      {type === "video" && <VimeoUploadField defaultValue={defaultValues?.video_url} />}
+      {type === "video" && (
+        <VimeoUploadField
+          defaultValue={defaultValues?.video_url}
+          onUploadingChange={onVideoUploadingChange}
+        />
+      )}
       {type === "pdf" && (
         <>
           <div>
@@ -90,6 +97,7 @@ function BlockFields({
 function EditableBlockRow({ block, sessionId }: { block: Block; sessionId: string }) {
   const [editing, setEditing] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [videoUploading, setVideoUploading] = useState(false);
   const [pending, startTransition] = useTransition();
 
   function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
@@ -110,12 +118,17 @@ function EditableBlockRow({ block, sessionId }: { block: Block; sessionId: strin
           <span className="text-xs font-medium uppercase tracking-wide text-muted">
             Editing {typeLabels[block.type]} block
           </span>
-          <BlockFields type={block.type} defaultValues={block} />
+          <BlockFields type={block.type} defaultValues={block} onVideoUploadingChange={setVideoUploading} />
           {error && <p className="text-sm font-medium text-terracotta">{error}</p>}
+          {videoUploading && (
+            <p className="text-xs font-medium text-muted">
+              Wait for the upload to finish before saving — Save is disabled until then.
+            </p>
+          )}
           <div className="flex gap-2">
             <button
               type="submit"
-              disabled={pending}
+              disabled={pending || videoUploading}
               className="rounded-full bg-teal px-4 py-1.5 text-xs font-medium text-porcelain hover:bg-teal-dark disabled:opacity-60"
             >
               {pending ? "Saving…" : "Save"}
@@ -177,6 +190,7 @@ function EditableBlockRow({ block, sessionId }: { block: Block; sessionId: strin
 function AddBlockForm({ sessionId }: { sessionId: string }) {
   const [type, setType] = useState<Block["type"]>("video");
   const [error, setError] = useState<string | null>(null);
+  const [videoUploading, setVideoUploading] = useState(false);
   const [pending, startTransition] = useTransition();
 
   function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
@@ -207,11 +221,16 @@ function AddBlockForm({ sessionId }: { sessionId: string }) {
         <option value="pdf">PDF</option>
         <option value="text">Text</option>
       </select>
-      <BlockFields type={type} />
+      <BlockFields type={type} onVideoUploadingChange={setVideoUploading} />
       {error && <p className="text-sm font-medium text-terracotta">{error}</p>}
+      {videoUploading && (
+        <p className="text-xs font-medium text-muted">
+          Wait for the upload to finish before adding — this button is disabled until then.
+        </p>
+      )}
       <button
         type="submit"
-        disabled={pending}
+        disabled={pending || videoUploading}
         className="w-fit rounded-full bg-ink px-4 py-1.5 text-xs font-medium text-porcelain hover:bg-teal disabled:opacity-60"
       >
         {pending ? "Adding…" : "+ Add block"}

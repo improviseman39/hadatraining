@@ -7,9 +7,13 @@ import { createVimeoUploadTicket } from "@/lib/actions/vimeo";
 export default function VimeoUploadField({
   defaultValue,
   onUploaded,
+  onUploadingChange,
 }: {
   defaultValue?: string | null;
   onUploaded?: (playerUrl: string) => void;
+  /** Fires with true while a file is picked/uploading, false once settled — so the
+   * surrounding form can disable Save and avoid persisting an empty video_url. */
+  onUploadingChange?: (uploading: boolean) => void;
 }) {
   const [videoUrl, setVideoUrl] = useState(defaultValue ?? "");
   const [status, setStatus] = useState<"idle" | "uploading" | "done" | "error">("idle");
@@ -23,11 +27,13 @@ export default function VimeoUploadField({
     setError(null);
     setStatus("uploading");
     setProgress(0);
+    onUploadingChange?.(true);
 
     const ticket = await createVimeoUploadTicket(file.name, file.size);
     if ("error" in ticket) {
       setError(ticket.error);
       setStatus("error");
+      onUploadingChange?.(false);
       if (fileInputRef.current) fileInputRef.current.value = "";
       return;
     }
@@ -38,6 +44,7 @@ export default function VimeoUploadField({
       onError: () => {
         setError("Upload failed partway through. Try again.");
         setStatus("error");
+        onUploadingChange?.(false);
       },
       onProgress: (bytesSent, bytesTotal) => {
         setProgress(Math.round((bytesSent / bytesTotal) * 100));
@@ -46,6 +53,7 @@ export default function VimeoUploadField({
         setVideoUrl(ticket.playerUrl);
         onUploaded?.(ticket.playerUrl);
         setStatus("done");
+        onUploadingChange?.(false);
       },
     });
     upload.start();

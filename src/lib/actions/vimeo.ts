@@ -24,8 +24,13 @@ async function findHadaFolderUri(token: string): Promise<string | null> {
   const res = await fetch(`${VIMEO_API}/me/projects?per_page=100`, {
     headers: VIMEO_HEADERS(token),
   });
-  if (!res.ok) return null;
+  if (!res.ok) {
+    console.error(`Vimeo folder lookup failed (${res.status}): ${await res.text()}`);
+    return null;
+  }
   const body = await res.json();
+  const names: string[] = (body?.data ?? []).map((p: { name?: string }) => p.name ?? "(unnamed)");
+  console.log(`Vimeo folders visible to this token: ${JSON.stringify(names)}`);
   const folder = (body?.data ?? []).find(
     (project: { name?: string; uri?: string }) =>
       project.name?.trim().toLowerCase() === FOLDER_NAME.toLowerCase()
@@ -98,10 +103,15 @@ export async function createVimeoUploadTicket(
         console.error(`Vimeo folder "${FOLDER_NAME}" not found — video left in root library.`);
         return;
       }
-      await fetch(`${VIMEO_API}${folderUri}${uri}`, {
+      const moveRes = await fetch(`${VIMEO_API}${folderUri}${uri}`, {
         method: "PUT",
         headers: VIMEO_HEADERS(token),
       });
+      if (!moveRes.ok) {
+        console.error(`Vimeo move-to-folder failed (${moveRes.status}): ${await moveRes.text()}`);
+      } else {
+        console.log(`Moved video ${uri} into folder ${folderUri}`);
+      }
     })(),
   ]);
 
