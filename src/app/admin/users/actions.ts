@@ -35,6 +35,51 @@ export async function inviteUser(formData: FormData) {
   return { success: true };
 }
 
+export type BulkInviteRowResult = {
+  email: string;
+  status: "invited" | "already_exists" | "error";
+  message?: string;
+};
+
+/**
+ * Processes one small batch of a bulk import at a time (called repeatedly
+ * by the client, not with the whole list at once) — inviting thousands of
+ * users sequentially would run far past any serverless function's request
+ * duration limit. Reuses the same inviteUserByEmail path as the single-user
+ * invite form, so each person gets Supabase's normal "set your password"
+ * email rather than a shared/admin-visible temporary password.
+ */
+export async function bulkInviteUsers(
+  emails: string[]
+): Promise<{ results: BulkInviteRowResult[] } | { error: string }> {
+  const { user: caller } = await requireRole(["super_admin"]);
+  const admin = createAdminClient();
+
+  const results: BulkInviteRowResult[] = [];
+  for (const rawEmail of emails) {
+    const email = rawEmail.trim().toLowerCase();
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      results.push({ email: rawEmail, status: "error", message: "Not a valid email address." });
+      continue;
+    }
+
+    const { error } = await admin.auth.admin.inviteUserByEmail(email, {
+      data: { role: "user", invited_by: caller.id },
+    });
+
+    if (!error) {
+      results.push({ email, status: "invited" });
+    } else if (/already been registered|already exists/i.test(error.message)) {
+      results.push({ email, status: "already_exists", message: error.message });
+    } else {
+      results.push({ email, status: "error", message: error.message });
+    }
+  }
+
+  revalidatePath("/admin/users");
+  return { results };
+}
+
 export async function createUserDirect(formData: FormData) {
   const { user: caller } = await requireRole(["super_admin"]);
 

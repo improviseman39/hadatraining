@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import InviteUserForm from "@/components/admin/InviteUserForm";
 import CreateUserForm from "@/components/admin/CreateUserForm";
@@ -21,9 +22,17 @@ export default async function AdminUsersPage() {
     <div>
       <h2 className="mb-6 font-serif text-xl text-ink">Users</h2>
 
-      <p className="mb-2 text-xs font-medium uppercase tracking-[0.15em] text-muted">
-        Invite by email
-      </p>
+      <div className="mb-2 flex items-center justify-between">
+        <p className="text-xs font-medium uppercase tracking-[0.15em] text-muted">
+          Invite by email
+        </p>
+        <Link
+          href="/admin/users/bulk-import"
+          className="text-xs font-medium text-teal underline underline-offset-2 hover:text-teal-dark"
+        >
+          Bulk import from a list →
+        </Link>
+      </div>
       <InviteUserForm />
 
       <p className="mb-2 text-xs font-medium uppercase tracking-[0.15em] text-muted">
