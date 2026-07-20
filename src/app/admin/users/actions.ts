@@ -5,6 +5,9 @@ import { revalidatePath } from "next/cache";
 import { requireRole } from "@/lib/auth/requireRole";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { sendEmail } from "@/lib/resend";
+
+const LOGIN_URL = "https://www.hadatraining.com/login";
 
 const ROLES = ["user", "admin", "super_admin"] as const;
 type RoleValue = (typeof ROLES)[number];
@@ -108,8 +111,18 @@ export async function createUserDirect(formData: FormData) {
 
   if (error) return { error: error.message };
 
+  // Deliberately doesn't include the password — that stays out of email
+  // entirely and is communicated by the admin through whatever channel
+  // they've already chosen. This is just so the person isn't caught off
+  // guard when their admin reaches out with login details.
+  const notifyResult = await sendEmail(
+    email,
+    "An account has been created for you on HADA Aesthetic Training",
+    `An administrator has set up an account for you on HADA Aesthetic Training, our clinical training platform.\n\nThey'll be in touch separately with your login details. Once you have them, sign in here:\n${LOGIN_URL}\n\nYou'll be asked to set your own password and enable two-factor authentication the first time you log in.`
+  );
+
   revalidatePath("/admin/users");
-  return { success: true };
+  return { success: true, emailError: notifyResult.error };
 }
 
 export async function resetPassword(userId: string) {

@@ -2,6 +2,7 @@
 
 import { randomInt, createHash } from "crypto";
 import { createClient } from "@/lib/supabase/server";
+import { sendEmail } from "@/lib/resend";
 
 const OTP_LENGTH = 6;
 const OTP_TTL_MINUTES = 10;
@@ -15,40 +16,11 @@ function hashCode(code: string): string {
 }
 
 async function sendOtpEmail(email: string, code: string): Promise<{ error?: string }> {
-  const apiKey = process.env.RESEND_API_KEY;
-  if (!apiKey) {
-    // Local/dev fallback — no Resend configured yet. Same graceful-degrade
-    // pattern as AuthContext's "Supabase not connected" branch.
-    console.log(`[DEV] Verification code for ${email}: ${code}`);
-    return {};
-  }
-
-  // Resend's own onboarding@resend.dev sender works immediately with zero
-  // setup — no custom domain needs to be verified first. RESEND_FROM_EMAIL
-  // overrides this once a real domain is registered and verified.
-  const from = process.env.RESEND_FROM_EMAIL ?? "HADA Aesthetic Training <onboarding@resend.dev>";
-
-  const response = await fetch("https://api.resend.com/emails", {
-    method: "POST",
-    headers: {
-      Authorization: `Bearer ${apiKey}`,
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify({
-      from,
-      to: email,
-      subject: "Your HADA verification code",
-      text: `Your verification code is ${code}.\n\nIt expires in ${OTP_TTL_MINUTES} minutes.\n\nDon't see this email? Check your spam or junk folder — first-time emails from a new sender sometimes land there.`,
-    }),
-  });
-
-  if (!response.ok) {
-    const body = await response.text();
-    console.error(`Resend send failed (${response.status}): ${body}`);
-    return { error: "Couldn't send the verification email. Try again in a moment." };
-  }
-
-  return {};
+  return sendEmail(
+    email,
+    "Your HADA verification code",
+    `Your verification code is ${code}.\n\nIt expires in ${OTP_TTL_MINUTES} minutes.\n\nDon't see this email? Check your spam or junk folder — first-time emails from a new sender sometimes land there.`
+  );
 }
 
 export async function sendVerificationCode() {
