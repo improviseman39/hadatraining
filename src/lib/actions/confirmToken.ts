@@ -19,10 +19,27 @@ export async function confirmToken(
   type: VerifiableType
 ): Promise<{ error: string } | { success: true }> {
   const supabase = createClient();
-  const { error } = await supabase.auth.verifyOtp({
+  const {
+    data: { user },
+    error,
+  } = await supabase.auth.verifyOtp({
     token_hash: tokenHash,
     type,
   });
   if (error) return { error: error.message };
+
+  // Clicking an invite link (through the explicit-confirm step above) is
+  // itself just as strong a proof of email ownership as our own 6-digit
+  // OTP step — making an invited user do both is redundant friction, not
+  // extra security. Mark them verified here so the onboarding gate's normal
+  // step order (verify → set password → 2FA) resolves correctly from a
+  // plain "/" redirect instead of a page-specific shortcut that skips it.
+  if (type === "invite" && user) {
+    await supabase
+      .from("profiles")
+      .update({ email_verified_at: new Date().toISOString() })
+      .eq("id", user.id);
+  }
+
   return { success: true };
 }
