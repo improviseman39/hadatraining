@@ -4,6 +4,7 @@ import { useState, useTransition } from "react";
 import { addBlock, deleteBlock, getPdfPreviewUrl, moveBlock, updateBlock } from "@/app/admin/sessions/actions";
 import ConfirmSubmitButton from "@/components/admin/ConfirmSubmitButton";
 import VimeoUploadField from "@/components/admin/VimeoUploadField";
+import PdfUploadField from "@/components/admin/PdfUploadField";
 import { useUnsavedChanges } from "@/components/admin/UnsavedChangesContext";
 
 type Block = {
@@ -92,11 +93,11 @@ function PreviewLink({ block }: { block: Block }) {
 function BlockFields({
   type,
   defaultValues,
-  onVideoUploadingChange,
+  onUploadingChange,
 }: {
   type: Block["type"];
   defaultValues?: Partial<Block>;
-  onVideoUploadingChange?: (uploading: boolean) => void;
+  onUploadingChange?: (uploading: boolean) => void;
 }) {
   return (
     <>
@@ -112,37 +113,15 @@ function BlockFields({
       {type === "video" && (
         <VimeoUploadField
           defaultValue={defaultValues?.video_url}
-          onUploadingChange={onVideoUploadingChange}
+          onUploadingChange={onUploadingChange}
         />
       )}
       {type === "pdf" && (
-        <>
-          <div>
-            <label className="mb-1.5 block text-xs font-medium text-ink">Upload a PDF</label>
-            <input
-              type="file"
-              name="pdf_file"
-              accept="application/pdf"
-              className="w-full rounded-lg border border-ink/15 bg-porcelain px-3 py-2 text-sm text-ink file:mr-3 file:rounded-full file:border-0 file:bg-teal file:px-3 file:py-1 file:text-xs file:font-medium file:text-porcelain focus:border-teal focus:outline-none focus:ring-2 focus:ring-teal/30"
-            />
-            {defaultValues?.pdf_storage_path && (
-              <p className="mt-1 text-xs text-muted">
-                A file is already uploaded — choosing a new one replaces it.
-              </p>
-            )}
-          </div>
-          <div>
-            <label className="mb-1.5 block text-xs font-medium text-ink">
-              …or paste an already-hosted link instead
-            </label>
-            <input
-              name="pdf_url"
-              defaultValue={defaultValues?.pdf_url ?? ""}
-              placeholder="https://…"
-              className="w-full rounded-lg border border-ink/15 bg-porcelain px-3 py-2 text-sm text-ink focus:border-teal focus:outline-none focus:ring-2 focus:ring-teal/30"
-            />
-          </div>
-        </>
+        <PdfUploadField
+          defaultStoragePath={defaultValues?.pdf_storage_path}
+          defaultUrl={defaultValues?.pdf_url}
+          onUploadingChange={onUploadingChange}
+        />
       )}
       {type === "text" && (
         <div>
@@ -164,7 +143,7 @@ function BlockFields({
 function EditableBlockRow({ block, sessionId }: { block: Block; sessionId: string }) {
   const [editing, setEditing] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [videoUploading, setVideoUploading] = useState(false);
+  const [uploading, setUploading] = useState(false);
   const [pending, startTransition] = useTransition();
   const unsaved = useUnsavedChanges();
   const dirtyKey = `block-${block.id}`;
@@ -203,9 +182,9 @@ function EditableBlockRow({ block, sessionId }: { block: Block; sessionId: strin
           <span className="text-xs font-medium uppercase tracking-wide text-muted">
             Editing {typeLabels[block.type]} block
           </span>
-          <BlockFields type={block.type} defaultValues={block} onVideoUploadingChange={setVideoUploading} />
+          <BlockFields type={block.type} defaultValues={block} onUploadingChange={setUploading} />
           {error && <p className="text-sm font-medium text-terracotta">{error}</p>}
-          {videoUploading && (
+          {uploading && (
             <p className="text-xs font-medium text-muted">
               Wait for the upload to finish before saving — Save is disabled until then.
             </p>
@@ -213,7 +192,7 @@ function EditableBlockRow({ block, sessionId }: { block: Block; sessionId: strin
           <div className="flex gap-2">
             <button
               type="submit"
-              disabled={pending || videoUploading}
+              disabled={pending || uploading}
               className="rounded-full bg-teal px-4 py-1.5 text-xs font-medium text-porcelain hover:bg-teal-dark disabled:opacity-60"
             >
               {pending ? "Saving…" : "Save"}
@@ -298,7 +277,7 @@ function EditableBlockRow({ block, sessionId }: { block: Block; sessionId: strin
 function AddBlockForm({ sessionId }: { sessionId: string }) {
   const [type, setType] = useState<Block["type"]>("video");
   const [error, setError] = useState<string | null>(null);
-  const [videoUploading, setVideoUploading] = useState(false);
+  const [uploading, setUploading] = useState(false);
   const [pending, startTransition] = useTransition();
   const unsaved = useUnsavedChanges();
 
@@ -339,16 +318,16 @@ function AddBlockForm({ sessionId }: { sessionId: string }) {
         <option value="pdf">PDF</option>
         <option value="text">Text</option>
       </select>
-      <BlockFields type={type} onVideoUploadingChange={setVideoUploading} />
+      <BlockFields type={type} onUploadingChange={setUploading} />
       {error && <p className="text-sm font-medium text-terracotta">{error}</p>}
-      {videoUploading && (
+      {uploading && (
         <p className="text-xs font-medium text-muted">
           Wait for the upload to finish before adding — this button is disabled until then.
         </p>
       )}
       <button
         type="submit"
-        disabled={pending || videoUploading}
+        disabled={pending || uploading}
         className="w-fit rounded-full bg-ink px-4 py-1.5 text-xs font-medium text-porcelain hover:bg-teal disabled:opacity-60"
       >
         {pending ? "Adding…" : "+ Add block"}

@@ -1,6 +1,5 @@
 "use server";
 
-import { randomUUID } from "crypto";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { requireRole } from "@/lib/auth/requireRole";
@@ -9,29 +8,6 @@ import { createClient } from "@/lib/supabase/server";
 const CATEGORIES = ["Foundations", "Injectables", "Devices", "Safety"] as const;
 
 const PDF_BUCKET = "session-pdfs";
-const MAX_PDF_BYTES = 20 * 1024 * 1024;
-
-/**
- * Uploads a PDF from formData's "pdf_file" field, if one was chosen.
- * Returns {} (no-op) if the field is empty — callers fall back to the
- * pasted-URL field in that case.
- */
-async function uploadPdfIfProvided(
-  supabase: ReturnType<typeof createClient>,
-  formData: FormData
-): Promise<{ path?: string; error?: string }> {
-  const file = formData.get("pdf_file");
-  if (!(file instanceof File) || file.size === 0) return {};
-  if (file.type !== "application/pdf") return { error: "File must be a PDF." };
-  if (file.size > MAX_PDF_BYTES) return { error: "PDF must be under 20MB." };
-
-  const path = `${randomUUID()}.pdf`;
-  const { error } = await supabase.storage
-    .from(PDF_BUCKET)
-    .upload(path, file, { contentType: "application/pdf" });
-  if (error) return { error: error.message };
-  return { path };
-}
 
 function revalidatePublicPages(slug?: string) {
   revalidatePath("/");
@@ -169,10 +145,9 @@ export async function addBlock(sessionId: string, formData: FormData) {
 
   if (type === "video") payload.video_url = String(formData.get("video_url") ?? "").trim() || null;
   if (type === "pdf") {
-    const { path, error: uploadError } = await uploadPdfIfProvided(supabase, formData);
-    if (uploadError) return { error: uploadError };
-    if (path) {
-      payload.pdf_storage_path = path;
+    const storagePath = String(formData.get("pdf_storage_path") ?? "").trim() || null;
+    if (storagePath) {
+      payload.pdf_storage_path = storagePath;
     } else {
       payload.pdf_url = String(formData.get("pdf_url") ?? "").trim() || null;
     }
@@ -207,22 +182,19 @@ export async function updateBlock(blockId: string, formData: FormData) {
   const payload: Record<string, unknown> = { title };
   if (block.type === "video") payload.video_url = String(formData.get("video_url") ?? "").trim() || null;
   if (block.type === "pdf") {
-    const { path, error: uploadError } = await uploadPdfIfProvided(supabase, formData);
-    if (uploadError) return { error: uploadError };
-    if (path) {
-      payload.pdf_storage_path = path;
+    const storagePath = String(formData.get("pdf_storage_path") ?? "").trim() || null;
+    const url = String(formData.get("pdf_url") ?? "").trim() || null;
+    if (storagePath) {
+      payload.pdf_storage_path = storagePath;
       payload.pdf_url = null;
-      if (block.pdf_storage_path) {
+      if (block.pdf_storage_path && block.pdf_storage_path !== storagePath) {
         await supabase.storage.from(PDF_BUCKET).remove([block.pdf_storage_path]);
       }
-    } else {
-      const url = String(formData.get("pdf_url") ?? "").trim() || null;
-      if (url) {
-        payload.pdf_url = url;
-        payload.pdf_storage_path = null;
-        if (block.pdf_storage_path) {
-          await supabase.storage.from(PDF_BUCKET).remove([block.pdf_storage_path]);
-        }
+    } else if (url) {
+      payload.pdf_url = url;
+      payload.pdf_storage_path = null;
+      if (block.pdf_storage_path) {
+        await supabase.storage.from(PDF_BUCKET).remove([block.pdf_storage_path]);
       }
     }
   }
