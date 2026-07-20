@@ -1,6 +1,6 @@
 import { createClient } from "@/lib/supabase/server";
 import LocalDateTime from "@/components/LocalDateTime";
-import ConfirmSubmitButton from "@/components/admin/ConfirmSubmitButton";
+import ActionButton from "@/components/admin/ActionButton";
 import { markRequestResolved, markRequestNew, deleteRequest } from "./actions";
 import { sendRequestMessage } from "@/lib/actions/requests";
 
@@ -126,27 +126,19 @@ export default async function AdminRequestsPage() {
               </form>
 
               <div className="mt-4 flex items-center justify-end gap-1.5">
-                <form
-                  action={(isNew ? markRequestResolved : markRequestNew).bind(
-                    null,
-                    request.id
-                  )}
+                <ActionButton
+                  action={(isNew ? markRequestResolved : markRequestNew).bind(null, request.id)}
+                  className="rounded-full border border-ink/15 px-3 py-1 text-xs font-medium text-ink transition-colors hover:border-teal hover:text-teal"
                 >
-                  <button
-                    type="submit"
-                    className="rounded-full border border-ink/15 px-3 py-1 text-xs font-medium text-ink transition-colors hover:border-teal hover:text-teal"
-                  >
-                    {isNew ? "Mark resolved" : "Reopen"}
-                  </button>
-                </form>
-                <form action={deleteRequest.bind(null, request.id)}>
-                  <ConfirmSubmitButton
-                    confirmMessage="Delete this request?"
-                    className="rounded-full border border-ink/15 px-3 py-1 text-xs font-medium text-terracotta transition-colors hover:border-terracotta"
-                  >
-                    Delete
-                  </ConfirmSubmitButton>
-                </form>
+                  {isNew ? "Mark resolved" : "Reopen"}
+                </ActionButton>
+                <ActionButton
+                  action={deleteRequest.bind(null, request.id)}
+                  confirmMessage="Delete this request?"
+                  className="rounded-full border border-ink/15 px-3 py-1 text-xs font-medium text-terracotta transition-colors hover:border-terracotta"
+                >
+                  Delete
+                </ActionButton>
               </div>
             </div>
           );

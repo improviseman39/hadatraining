@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import { deleteSession, moveSession } from "@/app/admin/sessions/actions";
-import ConfirmSubmitButton from "@/components/admin/ConfirmSubmitButton";
+import ActionButton from "@/components/admin/ActionButton";
 
 export const dynamic = "force-dynamic";
 
@@ -70,44 +70,39 @@ export default async function AdminSessionsPage() {
                 </td>
                 <td className="px-4 py-3">
                   <div className="flex items-center justify-end gap-1.5">
-                    <form action={moveSession.bind(null, session.id, "up")}>
-                      <button
-                        type="submit"
-                        disabled={i === 0}
-                        aria-label="Move up"
-                        className="flex h-7 w-7 items-center justify-center rounded-full border border-ink/15 text-ink transition-colors hover:border-teal hover:text-teal disabled:opacity-30"
-                      >
-                        &uarr;
-                      </button>
-                    </form>
-                    <form action={moveSession.bind(null, session.id, "down")}>
-                      <button
-                        type="submit"
-                        disabled={i === (sessions?.length ?? 0) - 1}
-                        aria-label="Move down"
-                        className="flex h-7 w-7 items-center justify-center rounded-full border border-ink/15 text-ink transition-colors hover:border-teal hover:text-teal disabled:opacity-30"
-                      >
-                        &darr;
-                      </button>
-                    </form>
+                    <ActionButton
+                      action={moveSession.bind(null, session.id, "up")}
+                      disabled={i === 0}
+                      ariaLabel="Move up"
+                      className="flex h-7 w-7 items-center justify-center rounded-full border border-ink/15 text-ink transition-colors hover:border-teal hover:text-teal disabled:opacity-30"
+                    >
+                      &uarr;
+                    </ActionButton>
+                    <ActionButton
+                      action={moveSession.bind(null, session.id, "down")}
+                      disabled={i === (sessions?.length ?? 0) - 1}
+                      ariaLabel="Move down"
+                      className="flex h-7 w-7 items-center justify-center rounded-full border border-ink/15 text-ink transition-colors hover:border-teal hover:text-teal disabled:opacity-30"
+                    >
+                      &darr;
+                    </ActionButton>
                     <Link
                       href={`/admin/sessions/${session.id}`}
                       className="rounded-full border border-ink/15 px-3 py-1 text-xs font-medium text-ink transition-colors hover:border-teal hover:text-teal"
                     >
                       Edit
                     </Link>
-                    <form action={deleteSession.bind(null, session.id)}>
-                      <ConfirmSubmitButton
-                        confirmMessage={
-                          bookingCountBySession.has(session.id)
-                            ? `Delete "${session.title}"? This also deletes its content blocks, and ${bookingCountBySession.get(session.id)} existing booking(s) will lose their topic.`
-                            : `Delete "${session.title}"? This also deletes its content blocks.`
-                        }
-                        className="rounded-full border border-ink/15 px-3 py-1 text-xs font-medium text-terracotta transition-colors hover:border-terracotta"
-                      >
-                        Delete
-                      </ConfirmSubmitButton>
-                    </form>
+                    <ActionButton
+                      action={deleteSession.bind(null, session.id)}
+                      confirmMessage={
+                        bookingCountBySession.has(session.id)
+                          ? `Delete "${session.title}"? This also deletes its content blocks, and ${bookingCountBySession.get(session.id)} existing booking(s) will lose their topic.`
+                          : `Delete "${session.title}"? This also deletes its content blocks.`
+                      }
+                      className="rounded-full border border-ink/15 px-3 py-1 text-xs font-medium text-terracotta transition-colors hover:border-terracotta"
+                    >
+                      Delete
+                    </ActionButton>
                   </div>
                 </td>
               </tr>

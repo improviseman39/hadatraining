@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import { deleteAnnouncement, moveAnnouncement } from "@/app/admin/announcements/actions";
-import ConfirmSubmitButton from "@/components/admin/ConfirmSubmitButton";
+import ActionButton from "@/components/admin/ActionButton";
 
 export const dynamic = "force-dynamic";
 
@@ -48,40 +48,35 @@ export default async function AdminAnnouncementsPage() {
                 <td className="px-4 py-3 text-muted">{item.date}</td>
                 <td className="px-4 py-3">
                   <div className="flex items-center justify-end gap-1.5">
-                    <form action={moveAnnouncement.bind(null, item.id, "up")}>
-                      <button
-                        type="submit"
-                        disabled={i === 0}
-                        aria-label="Move up"
-                        className="flex h-7 w-7 items-center justify-center rounded-full border border-ink/15 text-ink transition-colors hover:border-teal hover:text-teal disabled:opacity-30"
-                      >
-                        &uarr;
-                      </button>
-                    </form>
-                    <form action={moveAnnouncement.bind(null, item.id, "down")}>
-                      <button
-                        type="submit"
-                        disabled={i === (announcements?.length ?? 0) - 1}
-                        aria-label="Move down"
-                        className="flex h-7 w-7 items-center justify-center rounded-full border border-ink/15 text-ink transition-colors hover:border-teal hover:text-teal disabled:opacity-30"
-                      >
-                        &darr;
-                      </button>
-                    </form>
+                    <ActionButton
+                      action={moveAnnouncement.bind(null, item.id, "up")}
+                      disabled={i === 0}
+                      ariaLabel="Move up"
+                      className="flex h-7 w-7 items-center justify-center rounded-full border border-ink/15 text-ink transition-colors hover:border-teal hover:text-teal disabled:opacity-30"
+                    >
+                      &uarr;
+                    </ActionButton>
+                    <ActionButton
+                      action={moveAnnouncement.bind(null, item.id, "down")}
+                      disabled={i === (announcements?.length ?? 0) - 1}
+                      ariaLabel="Move down"
+                      className="flex h-7 w-7 items-center justify-center rounded-full border border-ink/15 text-ink transition-colors hover:border-teal hover:text-teal disabled:opacity-30"
+                    >
+                      &darr;
+                    </ActionButton>
                     <Link
                       href={`/admin/announcements/${item.id}`}
                       className="rounded-full border border-ink/15 px-3 py-1 text-xs font-medium text-ink transition-colors hover:border-teal hover:text-teal"
                     >
                       Edit
                     </Link>
-                    <form action={deleteAnnouncement.bind(null, item.id)}>
-                      <ConfirmSubmitButton
-                        confirmMessage={`Delete "${item.title}"?`}
-                        className="rounded-full border border-ink/15 px-3 py-1 text-xs font-medium text-terracotta transition-colors hover:border-terracotta"
-                      >
-                        Delete
-                      </ConfirmSubmitButton>
-                    </form>
+                    <ActionButton
+                      action={deleteAnnouncement.bind(null, item.id)}
+                      confirmMessage={`Delete "${item.title}"?`}
+                      className="rounded-full border border-ink/15 px-3 py-1 text-xs font-medium text-terracotta transition-colors hover:border-terracotta"
+                    >
+                      Delete
+                    </ActionButton>
                   </div>
                 </td>
               </tr>

@@ -2,7 +2,7 @@ import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import { deleteBooking } from "@/app/admin/bookings/actions";
 import LocalDateTime from "@/components/LocalDateTime";
-import ConfirmSubmitButton from "@/components/admin/ConfirmSubmitButton";
+import ActionButton from "@/components/admin/ActionButton";
 
 export const dynamic = "force-dynamic";
 
@@ -70,14 +70,13 @@ export default async function AdminBookingsPage() {
                       >
                         Edit
                       </Link>
-                      <form action={deleteBooking.bind(null, booking.id)}>
-                        <ConfirmSubmitButton
-                          confirmMessage="Cancel this booking?"
-                          className="rounded-full border border-ink/15 px-3 py-1 text-xs font-medium text-terracotta transition-colors hover:border-terracotta"
-                        >
-                          Cancel
-                        </ConfirmSubmitButton>
-                      </form>
+                      <ActionButton
+                        action={deleteBooking.bind(null, booking.id)}
+                        confirmMessage="Cancel this booking?"
+                        className="rounded-full border border-ink/15 px-3 py-1 text-xs font-medium text-terracotta transition-colors hover:border-terracotta"
+                      >
+                        Cancel
+                      </ActionButton>
                     </div>
                   </td>
                 </tr>

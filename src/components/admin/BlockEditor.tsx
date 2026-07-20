@@ -2,7 +2,7 @@
 
 import { useState, useTransition } from "react";
 import { addBlock, deleteBlock, getPdfPreviewUrl, moveBlock, updateBlock } from "@/app/admin/sessions/actions";
-import ConfirmSubmitButton from "@/components/admin/ConfirmSubmitButton";
+import ActionButton from "@/components/admin/ActionButton";
 import VimeoUploadField from "@/components/admin/VimeoUploadField";
 import PdfUploadField from "@/components/admin/PdfUploadField";
 import { useUnsavedChanges } from "@/components/admin/UnsavedChangesContext";
@@ -244,16 +244,20 @@ function EditableBlockRow({ block, sessionId }: { block: Block; sessionId: strin
         )}
       </div>
       <div className="flex shrink-0 items-center gap-1.5">
-        <form action={moveBlock.bind(null, block.id, sessionId, "up")}>
-          <button type="submit" aria-label="Move up" className="flex h-7 w-7 items-center justify-center rounded-full border border-ink/15 text-ink hover:border-teal hover:text-teal">
-            &uarr;
-          </button>
-        </form>
-        <form action={moveBlock.bind(null, block.id, sessionId, "down")}>
-          <button type="submit" aria-label="Move down" className="flex h-7 w-7 items-center justify-center rounded-full border border-ink/15 text-ink hover:border-teal hover:text-teal">
-            &darr;
-          </button>
-        </form>
+        <ActionButton
+          action={moveBlock.bind(null, block.id, sessionId, "up")}
+          ariaLabel="Move up"
+          className="flex h-7 w-7 items-center justify-center rounded-full border border-ink/15 text-ink hover:border-teal hover:text-teal"
+        >
+          &uarr;
+        </ActionButton>
+        <ActionButton
+          action={moveBlock.bind(null, block.id, sessionId, "down")}
+          ariaLabel="Move down"
+          className="flex h-7 w-7 items-center justify-center rounded-full border border-ink/15 text-ink hover:border-teal hover:text-teal"
+        >
+          &darr;
+        </ActionButton>
         <button
           type="button"
           onClick={() => setEditing(true)}
@@ -261,14 +265,13 @@ function EditableBlockRow({ block, sessionId }: { block: Block; sessionId: strin
         >
           Edit
         </button>
-        <form action={deleteBlock.bind(null, block.id)}>
-          <ConfirmSubmitButton
-            confirmMessage="Delete this block?"
-            className="rounded-full border border-ink/15 px-3 py-1 text-xs font-medium text-terracotta hover:border-terracotta"
-          >
-            Delete
-          </ConfirmSubmitButton>
-        </form>
+        <ActionButton
+          action={deleteBlock.bind(null, block.id)}
+          confirmMessage="Delete this block?"
+          className="rounded-full border border-ink/15 px-3 py-1 text-xs font-medium text-terracotta hover:border-terracotta"
+        >
+          Delete
+        </ActionButton>
       </div>
     </li>
   );
