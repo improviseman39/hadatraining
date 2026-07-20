@@ -250,10 +250,19 @@ otp_expiry = 3600
 # admin_email = "admin@email.com"
 # sender_name = "Admin"
 
-# Uncomment to customize email template
-# [auth.email.template.invite]
-# subject = "You have been invited"
-# content_path = "./supabase/templates/invite.html"
+# Custom templates link to our own /auth/confirm page (requiring an explicit
+# click before the one-time token is consumed) instead of Supabase's default
+# auto-verify-on-GET link. Without this, Gmail's automatic link-scanning
+# silently burns the token before the real click, breaking every invite and
+# password reset with "Email link is invalid or has expired" — hit and
+# diagnosed for real against production before this fix.
+[auth.email.template.invite]
+subject = "You've been invited to HADA Aesthetic Training"
+content_path = "./supabase/templates/invite.html"
+
+[auth.email.template.recovery]
+subject = "Reset your HADA Aesthetic Training password"
+content_path = "./supabase/templates/recovery.html"
 
 # Uncomment to customize notification email template
 # [auth.email.notification.password_changed]
