@@ -41,7 +41,9 @@ export default function SetPasswordForm() {
         return;
       }
 
-      router.push("/onboarding/setup-2fa");
+      // Redirect to "/" (not a hardcoded next step) and let the middleware
+      // gate resolve the real next step — same reasoning as VerifyEmailForm.
+      router.push("/");
       router.refresh();
     });
   }

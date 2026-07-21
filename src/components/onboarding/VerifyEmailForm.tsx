@@ -41,7 +41,12 @@ export default function VerifyEmailForm() {
         setError(result.error);
         return;
       }
-      router.push("/onboarding/set-password");
+      // Not a hardcoded "/onboarding/set-password" — self-signup users
+      // already set their real password during signup (must_change_password
+      // is already false for them), so sending everyone to that step
+      // unconditionally re-asked for a password they'd just chosen. Redirect
+      // to "/" and let the middleware gate resolve whatever's actually next.
+      router.push("/");
       router.refresh();
     });
   }
