@@ -9,11 +9,19 @@ export default function HeroLoginButton() {
   if (!isReady || isMember) return null;
 
   return (
-    <Link
-      href="/login"
-      className="rounded-full border border-porcelain/30 px-6 py-3 text-sm font-medium text-porcelain transition-colors hover:border-porcelain hover:bg-porcelain/10"
-    >
-      Log in to your account
-    </Link>
+    <>
+      <Link
+        href="/signup"
+        className="rounded-full bg-teal px-6 py-3 text-sm font-medium text-porcelain transition-colors hover:bg-teal-dark"
+      >
+        Create your account
+      </Link>
+      <Link
+        href="/login"
+        className="rounded-full border border-porcelain/30 px-6 py-3 text-sm font-medium text-porcelain transition-colors hover:border-porcelain hover:bg-porcelain/10"
+      >
+        Log in
+      </Link>
+    </>
   );
 }

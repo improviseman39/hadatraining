@@ -196,8 +196,10 @@ export default function LoginForm() {
         </button>
 
         <p className="text-center text-xs leading-relaxed text-muted">
-          Accounts are created by your HADA administrator. Contact them if
-          you need access.
+          Don&apos;t have an account?{" "}
+          <Link href="/signup" className="font-medium text-teal hover:underline">
+            Sign up
+          </Link>
         </p>
       </div>
     </form>
