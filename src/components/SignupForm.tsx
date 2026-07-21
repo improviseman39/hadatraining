@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useTransition } from "react";
+import Link from "next/link";
 import { signUp } from "@/app/signup/actions";
 import { THAILAND_PROVINCES, CLINIC_POSITIONS, HADA_CLASS_YEARS } from "@/data/thailand";
 
@@ -11,15 +12,20 @@ const labelClass = "mb-2 block text-sm font-medium text-ink";
 export default function SignupForm() {
   const [isClinicOwner, setIsClinicOwner] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [alreadyExists, setAlreadyExists] = useState(false);
   const [pending, startTransition] = useTransition();
 
   function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
     const formData = new FormData(event.currentTarget);
     setError(null);
+    setAlreadyExists(false);
     startTransition(async () => {
       const result = await signUp(formData);
-      if (result?.error) setError(result.error);
+      if (result?.error) {
+        setError(result.error);
+        setAlreadyExists(Boolean(result.alreadyExists));
+      }
     });
   }
 
@@ -121,6 +127,14 @@ export default function SignupForm() {
       {error && (
         <p role="alert" className="text-sm font-medium text-terracotta">
           {error}
+          {alreadyExists && (
+            <>
+              {" "}
+              <Link href="/login" className="underline">Log in</Link>, or if you forgot your
+              password,{" "}
+              <Link href="/forgot-password" className="underline">reset it</Link>.
+            </>
+          )}
         </p>
       )}
 
