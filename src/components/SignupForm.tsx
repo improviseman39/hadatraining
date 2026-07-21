@@ -73,7 +73,9 @@ export default function SignupForm() {
 
       <div className="grid grid-cols-1 gap-5 sm:grid-cols-2">
         <div>
-          <label htmlFor="position" className={labelClass}>Your role</label>
+          <label htmlFor="position" className={labelClass}>
+            Your role <span className="font-normal text-muted">(at your clinic)</span>
+          </label>
           <select id="position" name="position" required defaultValue="" className={inputClass}>
             <option value="" disabled>Select one</option>
             {CLINIC_POSITIONS.map((p) => (
@@ -83,7 +85,9 @@ export default function SignupForm() {
         </div>
 
         <div>
-          <label htmlFor="class_year" className={labelClass}>HADA class year</label>
+          <label htmlFor="class_year" className={labelClass}>
+            HADA class year <span className="font-normal text-muted">(when you trained)</span>
+          </label>
           <select id="class_year" name="class_year" required defaultValue="" className={inputClass}>
             <option value="" disabled>Select one</option>
             {HADA_CLASS_YEARS.map((year) => (
@@ -103,24 +107,33 @@ export default function SignupForm() {
         </select>
       </div>
 
-      <div>
-        <label className="flex items-center gap-2 text-sm text-ink">
+      <div className="rounded-xl border border-ink/15 bg-porcelain/60 p-4">
+        <label className="flex items-start gap-3 text-sm text-ink">
           <input
             type="checkbox"
             name="is_clinic_owner"
             checked={isClinicOwner}
             onChange={(event) => setIsClinicOwner(event.target.checked)}
-            className="h-4 w-4 rounded border-ink/25 text-teal focus:ring-teal/30"
+            className="mt-0.5 h-5 w-5 shrink-0 rounded border-ink/25 text-teal focus:ring-teal/30"
           />
-          I own a clinic
+          <span>
+            <span className="font-medium">Are you a clinic owner?</span>
+            <span className="block text-xs text-muted">
+              (Check this if you&apos;re the owner or founder of an aesthetic clinic, not just a staff member)
+            </span>
+          </span>
         </label>
         {isClinicOwner && (
-          <input
-            name="clinic_name"
-            required
-            placeholder="Clinic name"
-            className={`${inputClass} mt-2`}
-          />
+          <div className="ml-8 mt-3">
+            <label htmlFor="clinic_name" className={labelClass}>Clinic name</label>
+            <input
+              id="clinic_name"
+              name="clinic_name"
+              required
+              placeholder="e.g. Bangkok Aesthetic Clinic"
+              className={inputClass}
+            />
+          </div>
         )}
       </div>
 
