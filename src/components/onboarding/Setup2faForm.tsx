@@ -4,6 +4,43 @@ import { useEffect, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 
+const AUTH_APPS = [
+  {
+    name: "Google Authenticator",
+    color: "#4285F4",
+    ios: "https://apps.apple.com/us/app/google-authenticator/id388497605",
+    android: "https://play.google.com/store/apps/details?id=com.google.android.apps.authenticator2",
+  },
+  {
+    name: "Microsoft Authenticator",
+    color: "#0078D4",
+    ios: "https://apps.apple.com/us/app/microsoft-authenticator/id983156458",
+    android: "https://play.google.com/store/apps/details?id=com.azure.authenticator",
+  },
+];
+
+function AuthAppIcon({ name, color }: { name: string; color: string }) {
+  if (name === "Microsoft Authenticator") {
+    return (
+      <svg width="32" height="32" viewBox="0 0 32 32" aria-hidden="true" className="shrink-0">
+        <rect x="2" y="2" width="13" height="13" fill="#F25022" />
+        <rect x="17" y="2" width="13" height="13" fill="#7FBA00" />
+        <rect x="2" y="17" width="13" height="13" fill="#00A4EF" />
+        <rect x="17" y="17" width="13" height="13" fill="#FFB900" />
+      </svg>
+    );
+  }
+  return (
+    <svg width="32" height="32" viewBox="0 0 32 32" aria-hidden="true" className="shrink-0">
+      <rect width="32" height="32" rx="8" fill={color} />
+      <path
+        d="M16 8a5 5 0 0 0-5 5v2H9v9h14v-9h-2v-2a5 5 0 0 0-5-5Zm0 2a3 3 0 0 1 3 3v2h-6v-2a3 3 0 0 1 3-3Z"
+        fill="#fff"
+      />
+    </svg>
+  );
+}
+
 export default function Setup2faForm() {
   const router = useRouter();
   const [status, setStatus] = useState<"loading" | "ready" | "error">("loading");
@@ -93,13 +130,31 @@ export default function Setup2faForm() {
 
   return (
     <div className="rounded-2xl border border-ink/10 bg-card p-7 shadow-sm sm:p-8">
-      <ol className="flex flex-col gap-3 text-sm leading-relaxed text-ink">
-        <li>
-          <span className="font-medium">1.</span> Install{" "}
-          <span className="font-medium">Google Authenticator</span> or{" "}
-          <span className="font-medium">Microsoft Authenticator</span> from your
-          phone&apos;s app store, if you don&apos;t already have one.
-        </li>
+      <div className="mb-4 text-sm leading-relaxed text-ink">
+        <span className="font-medium">1.</span> Install one of these free apps first, if you don&apos;t
+        already have one:
+      </div>
+
+      <div className="mb-5 grid grid-cols-1 gap-3 sm:grid-cols-2">
+        {AUTH_APPS.map((app) => (
+          <div key={app.name} className="rounded-xl border border-ink/10 bg-porcelain/60 p-3">
+            <div className="flex items-center gap-2.5">
+              <AuthAppIcon name={app.name} color={app.color} />
+              <span className="text-sm font-medium text-ink">{app.name}</span>
+            </div>
+            <div className="mt-2 flex gap-3 text-xs font-medium text-teal">
+              <a href={app.ios} target="_blank" rel="noopener noreferrer" className="hover:underline">
+                iPhone (App Store)
+              </a>
+              <a href={app.android} target="_blank" rel="noopener noreferrer" className="hover:underline">
+                Android (Google Play)
+              </a>
+            </div>
+          </div>
+        ))}
+      </div>
+
+      <ol start={2} className="flex flex-col gap-3 text-sm leading-relaxed text-ink">
         <li>
           <span className="font-medium">2.</span> Open the app and tap{" "}
           <span className="font-medium">+ / Add account</span>.
