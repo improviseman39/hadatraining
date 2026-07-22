@@ -30,13 +30,21 @@ export async function createAnnouncement(formData: FormData) {
   const nextPosition = (maxRow?.position ?? 0) + 1;
 
   const href = String(formData.get("href") ?? "").trim() || null;
+  const imageStoragePath = String(formData.get("image_storage_path") ?? "").trim() || null;
+  const imageId = String(formData.get("image_id") ?? "").trim() || null;
+  if (!imageStoragePath && !imageId) {
+    return { error: "Upload an image or provide an Unsplash photo id." };
+  }
+  const videoUrl = String(formData.get("video_url") ?? "").trim() || null;
 
   const { error } = await supabase.from("announcements").insert({
     category,
     title: String(formData.get("title") ?? ""),
     description: String(formData.get("description") ?? ""),
     date: String(formData.get("date") ?? ""),
-    image_id: String(formData.get("image_id") ?? ""),
+    image_id: imageStoragePath ? null : imageId,
+    image_storage_path: imageStoragePath,
+    video_url: videoUrl,
     href,
     position: nextPosition,
   });
@@ -57,6 +65,18 @@ export async function updateAnnouncement(id: string, formData: FormData) {
   }
 
   const href = String(formData.get("href") ?? "").trim() || null;
+  const imageStoragePath = String(formData.get("image_storage_path") ?? "").trim() || null;
+  const imageId = String(formData.get("image_id") ?? "").trim() || null;
+  if (!imageStoragePath && !imageId) {
+    return { error: "Upload an image or provide an Unsplash photo id." };
+  }
+  const videoUrl = String(formData.get("video_url") ?? "").trim() || null;
+
+  const { data: existing } = await supabase
+    .from("announcements")
+    .select("image_storage_path")
+    .eq("id", id)
+    .single();
 
   const { error } = await supabase
     .from("announcements")
@@ -65,10 +85,16 @@ export async function updateAnnouncement(id: string, formData: FormData) {
       title: String(formData.get("title") ?? ""),
       description: String(formData.get("description") ?? ""),
       date: String(formData.get("date") ?? ""),
-      image_id: String(formData.get("image_id") ?? ""),
+      image_id: imageStoragePath ? null : imageId,
+      image_storage_path: imageStoragePath,
+      video_url: videoUrl,
       href,
     })
     .eq("id", id);
+
+  if (!error && existing?.image_storage_path && existing.image_storage_path !== imageStoragePath) {
+    await supabase.storage.from("announcement-images").remove([existing.image_storage_path]);
+  }
 
   if (error) return { error: error.message };
 

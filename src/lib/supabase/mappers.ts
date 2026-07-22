@@ -4,6 +4,19 @@ import type {
   Session,
   SessionWithBlocks,
 } from "@/types/content";
+import { unsplashUrl } from "@/data/sessions";
+
+const ANNOUNCEMENT_IMAGES_BUCKET = "announcement-images";
+
+function announcementImageUrl(imageId: string | null, storagePath: string | null): string {
+  if (storagePath) {
+    return `${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/${ANNOUNCEMENT_IMAGES_BUCKET}/${storagePath}`;
+  }
+  if (imageId) return unsplashUrl(imageId, 900);
+  // Shouldn't happen in practice — the form requires one or the other — but
+  // fall back to something rather than an empty/broken image src.
+  return unsplashUrl("1516549655169-df83a0774514", 900);
+}
 
 type SessionRow = {
   id: string;
@@ -34,7 +47,9 @@ type AnnouncementRow = {
   title: string;
   description: string;
   date: string;
-  image_id: string;
+  image_id: string | null;
+  image_storage_path: string | null;
+  video_url: string | null;
   href: string | null;
   position: number;
 };
@@ -82,6 +97,8 @@ export function mapAnnouncement(row: AnnouncementRow): Announcement {
     description: row.description,
     date: row.date,
     imageId: row.image_id,
+    imageUrl: announcementImageUrl(row.image_id, row.image_storage_path),
+    videoUrl: row.video_url,
     href: row.href,
     position: row.position,
   };

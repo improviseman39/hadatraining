@@ -34,7 +34,11 @@ export type Announcement = {
   title: string;
   description: string;
   date: string;
-  imageId: string;
+  imageId: string | null;
+  /** Resolved, always-usable image URL — from image_storage_path if an image was
+   * uploaded, otherwise built from imageId (the older Unsplash-photo-id field). */
+  imageUrl: string;
+  videoUrl: string | null;
   href: string | null;
   position: number;
 };

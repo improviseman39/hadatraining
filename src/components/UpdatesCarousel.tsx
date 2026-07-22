@@ -4,7 +4,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 import type { Announcement } from "@/types/content";
-import { unsplashUrl, announcementCategoryStyles } from "@/data/sessions";
+import { announcementCategoryStyles } from "@/data/sessions";
 
 const AUTOPLAY_MS = 6000;
 
@@ -102,36 +102,50 @@ export default function UpdatesCarousel({
             style={{ transform: `translateX(-${index * 100}%)` }}
           >
             {items.map((item, i) => {
+              const media = item.videoUrl ? (
+                <iframe
+                  src={item.videoUrl}
+                  title={`${item.title} — video`}
+                  className="absolute inset-0 h-full w-full"
+                  allow="autoplay; fullscreen; picture-in-picture"
+                  allowFullScreen
+                />
+              ) : (
+                <Image
+                  src={item.imageUrl}
+                  alt=""
+                  fill
+                  sizes="(min-width: 640px) 50vw, 100vw"
+                  className="object-cover"
+                  priority={i === 0}
+                />
+              );
+
+              const text = (
+                <div className="flex flex-col justify-center gap-3 p-6 sm:p-8">
+                  <div className="flex items-center gap-3">
+                    <span
+                      className={`rounded-full px-3 py-1 text-xs font-medium uppercase tracking-wide ${announcementCategoryStyles[item.category]}`}
+                    >
+                      {item.category}
+                    </span>
+                    <span className="text-xs font-medium uppercase tracking-wide text-muted">
+                      {formatDate(item.date)}
+                    </span>
+                  </div>
+                  <h3 className="font-serif text-xl text-ink sm:text-2xl">
+                    {item.title}
+                  </h3>
+                  <p className="text-sm leading-relaxed text-muted">
+                    {item.description}
+                  </p>
+                </div>
+              );
+
               const card = (
                 <div className="grid grid-cols-1 gap-0 overflow-hidden rounded-2xl bg-card sm:grid-cols-2">
-                  <div className="relative h-56 w-full sm:h-full sm:min-h-[240px]">
-                    <Image
-                      src={unsplashUrl(item.imageId, 900)}
-                      alt=""
-                      fill
-                      sizes="(min-width: 640px) 50vw, 100vw"
-                      className="object-cover"
-                      priority={i === 0}
-                    />
-                  </div>
-                  <div className="flex flex-col justify-center gap-3 p-6 sm:p-8">
-                    <div className="flex items-center gap-3">
-                      <span
-                        className={`rounded-full px-3 py-1 text-xs font-medium uppercase tracking-wide ${announcementCategoryStyles[item.category]}`}
-                      >
-                        {item.category}
-                      </span>
-                      <span className="text-xs font-medium uppercase tracking-wide text-muted">
-                        {formatDate(item.date)}
-                      </span>
-                    </div>
-                    <h3 className="font-serif text-xl text-ink sm:text-2xl">
-                      {item.title}
-                    </h3>
-                    <p className="text-sm leading-relaxed text-muted">
-                      {item.description}
-                    </p>
-                  </div>
+                  <div className="relative h-56 w-full bg-ink sm:h-full sm:min-h-[240px]">{media}</div>
+                  {text}
                 </div>
               );
 
@@ -141,7 +155,10 @@ export default function UpdatesCarousel({
                   className="w-full shrink-0"
                   aria-hidden={i !== index}
                 >
-                  {item.href ? (
+                  {/* A video needs real interaction (play/pause/seek), which an
+                      enclosing <Link> would break — only wrap in the optional
+                      href when there's no video to interact with. */}
+                  {item.href && !item.videoUrl ? (
                     <Link href={item.href} className="block focus-visible:outline-none">
                       {card}
                     </Link>

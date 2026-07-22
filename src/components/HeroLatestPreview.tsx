@@ -1,7 +1,7 @@
 import Image from "next/image";
 import Link from "next/link";
 import type { Announcement } from "@/types/content";
-import { unsplashUrl, announcementCategoryStyles } from "@/data/sessions";
+import { announcementCategoryStyles } from "@/data/sessions";
 
 function formatDate(iso: string): string {
   return new Date(`${iso}T00:00:00`).toLocaleDateString("en-US", {
@@ -35,7 +35,7 @@ export default function HeroLatestPreview({ items }: { items: Announcement[] }) 
           const row = (
             <div className="flex items-center gap-3">
               <div className="relative h-12 w-12 shrink-0 overflow-hidden rounded-lg">
-                <Image src={unsplashUrl(item.imageId, 120)} alt="" fill className="object-cover" />
+                <Image src={item.imageUrl} alt="" fill className="object-cover" />
               </div>
               <div className="min-w-0">
                 <div className="flex items-center gap-2">
