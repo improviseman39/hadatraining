@@ -12,6 +12,41 @@ function revalidatePublicPages() {
   revalidatePath("/admin/announcements");
 }
 
+/**
+ * Slots a brand-new announcement into date order (soonest-upcoming-first)
+ * relative to whatever's already there, without disturbing the existing
+ * items' order relative to each other — admins can still freely reorder
+ * anything afterward via moveAnnouncement, which always has the final say.
+ * Only used at creation time; editing an existing announcement's date
+ * deliberately does not re-slot it, since that could silently undo a
+ * manual reorder over an unrelated edit.
+ */
+async function insertAtDateSortedPosition(
+  supabase: ReturnType<typeof createClient>,
+  newDate: string
+): Promise<number> {
+  const { data: existing } = await supabase
+    .from("announcements")
+    .select("id, position, date")
+    .order("position");
+  const rows = existing ?? [];
+
+  const insertBeforeIndex = rows.findIndex((row) => row.date > newDate);
+  if (insertBeforeIndex === -1) {
+    return (rows.at(-1)?.position ?? 0) + 1;
+  }
+
+  // Shift this row and everything after it up by one, starting from the
+  // end, so no two rows ever momentarily want the same position.
+  for (let i = rows.length - 1; i >= insertBeforeIndex; i--) {
+    await supabase
+      .from("announcements")
+      .update({ position: rows[i].position + 1 })
+      .eq("id", rows[i].id);
+  }
+  return rows[insertBeforeIndex].position;
+}
+
 export async function createAnnouncement(formData: FormData) {
   await requireRole(["admin", "super_admin"]);
   const supabase = createClient();
@@ -21,13 +56,8 @@ export async function createAnnouncement(formData: FormData) {
     return { error: "Invalid category." };
   }
 
-  const { data: maxRow } = await supabase
-    .from("announcements")
-    .select("position")
-    .order("position", { ascending: false })
-    .limit(1)
-    .single();
-  const nextPosition = (maxRow?.position ?? 0) + 1;
+  const date = String(formData.get("date") ?? "");
+  const nextPosition = await insertAtDateSortedPosition(supabase, date);
 
   const href = String(formData.get("href") ?? "").trim() || null;
   const imageStoragePath = String(formData.get("image_storage_path") ?? "").trim() || null;
@@ -41,7 +71,7 @@ export async function createAnnouncement(formData: FormData) {
     category,
     title: String(formData.get("title") ?? ""),
     description: String(formData.get("description") ?? ""),
-    date: String(formData.get("date") ?? ""),
+    date,
     image_id: imageStoragePath ? null : imageId,
     image_storage_path: imageStoragePath,
     video_url: videoUrl,
