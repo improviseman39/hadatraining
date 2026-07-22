@@ -28,6 +28,7 @@ type SessionRow = {
   image_id: string;
   is_free: boolean;
   position: number;
+  parent_id: string | null;
 };
 
 type ContentBlockRow = {
@@ -65,6 +66,7 @@ export function mapSession(row: SessionRow): Session {
     imageId: row.image_id,
     isFree: row.is_free,
     position: row.position,
+    parentId: row.parent_id,
   };
 }
 

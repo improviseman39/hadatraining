@@ -5,12 +5,53 @@ import ActionButton from "@/components/admin/ActionButton";
 
 export const dynamic = "force-dynamic";
 
+type SessionRow = {
+  id: string;
+  slug: string;
+  title: string;
+  category: string;
+  is_free: boolean;
+  position: number;
+  parent_id: string | null;
+};
+
+type FlatRow = {
+  session: SessionRow;
+  depth: number;
+  siblingIndex: number;
+  siblingCount: number;
+};
+
+/** Depth-first flatten of the parent_id tree, so each row knows its depth
+ * (for indentation) and its position among its own siblings (for correct
+ * "already at the edge" up/down disabling — not the overall list index). */
+function flattenTree(sessions: SessionRow[]): FlatRow[] {
+  const childrenByParent = new Map<string | null, SessionRow[]>();
+  for (const session of sessions) {
+    const key = session.parent_id;
+    if (!childrenByParent.has(key)) childrenByParent.set(key, []);
+    childrenByParent.get(key)!.push(session);
+  }
+  for (const list of childrenByParent.values()) list.sort((a, b) => a.position - b.position);
+
+  const result: FlatRow[] = [];
+  function walk(parentId: string | null, depth: number) {
+    const siblings = childrenByParent.get(parentId) ?? [];
+    siblings.forEach((session, siblingIndex) => {
+      result.push({ session, depth, siblingIndex, siblingCount: siblings.length });
+      walk(session.id, depth + 1);
+    });
+  }
+  walk(null, 0);
+  return result;
+}
+
 export default async function AdminSessionsPage() {
   const supabase = createClient();
   const [{ data: sessions }, { data: bookingRows }] = await Promise.all([
     supabase
       .from("sessions")
-      .select("id, slug, title, category, is_free, position")
+      .select("id, slug, title, category, is_free, position, parent_id")
       .order("position"),
     supabase.from("bookings").select("session_id"),
   ]);
@@ -23,6 +64,8 @@ export default async function AdminSessionsPage() {
       (bookingCountBySession.get(row.session_id) ?? 0) + 1
     );
   }
+
+  const rows = flattenTree(sessions ?? []);
 
   return (
     <div>
@@ -48,17 +91,24 @@ export default async function AdminSessionsPage() {
             </tr>
           </thead>
           <tbody>
-            {(sessions ?? []).map((session, i) => (
+            {rows.map(({ session, depth, siblingIndex, siblingCount }) => (
               <tr key={session.id} className="border-b border-ink/5 last:border-0">
                 <td className="px-4 py-3 text-muted">{session.position}</td>
                 <td className="px-4 py-3 font-medium text-ink">
-                  <Link href={`/admin/sessions/${session.id}`} className="hover:text-teal">
-                    {session.title}
-                  </Link>
+                  <div style={{ paddingLeft: `${depth * 1.5}rem` }} className="flex items-center gap-1.5">
+                    {depth > 0 && <span className="text-muted">&#8627;</span>}
+                    <Link href={`/admin/sessions/${session.id}`} className="hover:text-teal">
+                      {session.title}
+                    </Link>
+                  </div>
                 </td>
                 <td className="px-4 py-3 text-muted">{session.category}</td>
                 <td className="px-4 py-3">
-                  {session.is_free ? (
+                  {depth > 0 ? (
+                    <span className="rounded-full border border-ink/10 px-2 py-0.5 text-xs font-medium text-muted">
+                      Inherited
+                    </span>
+                  ) : session.is_free ? (
                     <span className="rounded-full bg-teal/10 px-2 py-0.5 text-xs font-medium text-teal-dark">
                       Free
                     </span>
@@ -72,7 +122,7 @@ export default async function AdminSessionsPage() {
                   <div className="flex items-center justify-end gap-1.5">
                     <ActionButton
                       action={moveSession.bind(null, session.id, "up")}
-                      disabled={i === 0}
+                      disabled={siblingIndex === 0}
                       ariaLabel="Move up"
                       className="flex h-7 w-7 items-center justify-center rounded-full border border-ink/15 text-ink transition-colors hover:border-teal hover:text-teal disabled:opacity-30"
                     >
@@ -80,12 +130,18 @@ export default async function AdminSessionsPage() {
                     </ActionButton>
                     <ActionButton
                       action={moveSession.bind(null, session.id, "down")}
-                      disabled={i === (sessions?.length ?? 0) - 1}
+                      disabled={siblingIndex === siblingCount - 1}
                       ariaLabel="Move down"
                       className="flex h-7 w-7 items-center justify-center rounded-full border border-ink/15 text-ink transition-colors hover:border-teal hover:text-teal disabled:opacity-30"
                     >
                       &darr;
                     </ActionButton>
+                    <Link
+                      href={`/admin/sessions/new?parent=${session.id}`}
+                      className="rounded-full border border-ink/15 px-3 py-1 text-xs font-medium text-ink transition-colors hover:border-teal hover:text-teal"
+                    >
+                      + Sub-topic
+                    </Link>
                     <Link
                       href={`/admin/sessions/${session.id}`}
                       className="rounded-full border border-ink/15 px-3 py-1 text-xs font-medium text-ink transition-colors hover:border-teal hover:text-teal"
@@ -96,8 +152,8 @@ export default async function AdminSessionsPage() {
                       action={deleteSession.bind(null, session.id)}
                       confirmMessage={
                         bookingCountBySession.has(session.id)
-                          ? `Delete "${session.title}"? This also deletes its content blocks, and ${bookingCountBySession.get(session.id)} existing booking(s) will lose their topic.`
-                          : `Delete "${session.title}"? This also deletes its content blocks.`
+                          ? `Delete "${session.title}"? This also deletes its content blocks${depth === 0 ? ", any sub-topics inside it," : ""} and ${bookingCountBySession.get(session.id)} existing booking(s) will lose their topic.`
+                          : `Delete "${session.title}"? This also deletes its content blocks${depth === 0 ? " and any sub-topics inside it" : ""}.`
                       }
                       className="rounded-full border border-ink/15 px-3 py-1 text-xs font-medium text-terracotta transition-colors hover:border-terracotta"
                     >

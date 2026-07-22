@@ -4,9 +4,33 @@ import { notFound } from "next/navigation";
 import { unsplashUrl } from "@/data/sessions";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { mapSessionWithBlocks } from "@/lib/supabase/mappers";
+import { mapSession, mapSessionWithBlocks } from "@/lib/supabase/mappers";
 import SessionContent from "@/components/SessionContent";
+import SessionCard from "@/components/SessionCard";
 import type { SessionWithBlocks } from "@/types/content";
+
+type Crumb = { slug: string; title: string };
+
+/** Walks parent_id upward to build a breadcrumb — arbitrary depth, so this
+ * loops rather than assuming a fixed number of levels. */
+async function buildBreadcrumb(
+  supabase: ReturnType<typeof createClient>,
+  parentId: string | null
+): Promise<Crumb[]> {
+  const crumbs: Crumb[] = [];
+  let currentParentId = parentId;
+  while (currentParentId) {
+    const { data: parent } = await supabase
+      .from("sessions")
+      .select("slug, title, parent_id")
+      .eq("id", currentParentId)
+      .single();
+    if (!parent) break;
+    crumbs.unshift({ slug: parent.slug, title: parent.title });
+    currentParentId = parent.parent_id;
+  }
+  return crumbs;
+}
 
 const PDF_BUCKET = "session-pdfs";
 const PDF_SIGNED_URL_TTL_SECONDS = 60 * 60;
@@ -72,17 +96,34 @@ export default async function SessionPage({
     blocks: await signPdfBlocks(mappedSession.blocks),
   };
 
-  const { data: neighborRows } = await supabase
+  // Prev/next only makes sense for top-level sessions — a sub-topic is
+  // discovered by browsing into its parent's page instead, via the
+  // breadcrumb and sub-topics list below, not a linear chain.
+  let prevSession: { slug: string; title: string } | null = null;
+  let nextSession: { slug: string; title: string } | null = null;
+  if (!session.parentId) {
+    const { data: neighborRows } = await supabase
+      .from("sessions")
+      .select("slug, title, position")
+      .is("parent_id", null)
+      .order("position");
+    const neighbors = neighborRows ?? [];
+    const currentIndex = neighbors.findIndex((s) => s.slug === session.slug);
+    prevSession = currentIndex > 0 ? neighbors[currentIndex - 1] : null;
+    nextSession =
+      currentIndex >= 0 && currentIndex < neighbors.length - 1
+        ? neighbors[currentIndex + 1]
+        : null;
+  }
+
+  const breadcrumb = await buildBreadcrumb(supabase, session.parentId);
+
+  const { data: childRows } = await supabase
     .from("sessions")
-    .select("slug, title, position")
+    .select("*")
+    .eq("parent_id", session.id)
     .order("position");
-  const neighbors = neighborRows ?? [];
-  const currentIndex = neighbors.findIndex((s) => s.slug === session.slug);
-  const prevSession = currentIndex > 0 ? neighbors[currentIndex - 1] : null;
-  const nextSession =
-    currentIndex >= 0 && currentIndex < neighbors.length - 1
-      ? neighbors[currentIndex + 1]
-      : null;
+  const subTopics = (childRows ?? []).map(mapSession);
 
   return (
     <article>
@@ -97,13 +138,19 @@ export default async function SessionPage({
         />
         <div className="absolute inset-0 bg-gradient-to-t from-ink/90 via-ink/40 to-ink/10" />
         <div className="container-page relative flex h-full flex-col justify-end pb-8">
-          <Link
-            href="/#curriculum"
-            className="absolute top-6 inline-flex w-fit items-center gap-2 text-sm font-medium text-porcelain/90 transition-colors hover:text-teal"
-          >
-            <span aria-hidden="true">&larr;</span>
-            Back to curriculum
-          </Link>
+          <div className="absolute top-6 flex w-fit flex-wrap items-center gap-1.5 text-sm font-medium text-porcelain/90">
+            <Link href="/#curriculum" className="transition-colors hover:text-teal">
+              <span aria-hidden="true">&larr;</span> Curriculum
+            </Link>
+            {breadcrumb.map((crumb) => (
+              <span key={crumb.slug} className="flex items-center gap-1.5">
+                <span aria-hidden="true" className="text-porcelain/40">/</span>
+                <Link href={`/sessions/${crumb.slug}`} className="transition-colors hover:text-teal">
+                  {crumb.title}
+                </Link>
+              </span>
+            ))}
+          </div>
           <div className="flex items-center gap-4">
             <span className="font-serif text-3xl text-porcelain/50 sm:text-4xl">
               {pad(session.position)}
@@ -134,6 +181,20 @@ export default async function SessionPage({
         <div className="mt-10 sm:mt-12">
           <SessionContent session={session} />
         </div>
+
+        {subTopics.length > 0 && (
+          <div className="mt-16 border-t border-ink/10 pt-10 sm:mt-20">
+            <h2 className="font-serif text-2xl text-ink">Inside this session</h2>
+            <p className="mt-2 text-sm text-muted">
+              {subTopics.length} sub-topic{subTopics.length > 1 ? "s" : ""}
+            </p>
+            <div className="mt-6 grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3">
+              {subTopics.map((subTopic) => (
+                <SessionCard key={subTopic.slug} session={subTopic} />
+              ))}
+            </div>
+          </div>
+        )}
 
         <nav className="mt-16 flex flex-col gap-4 border-t border-ink/10 pt-8 sm:mt-20 sm:flex-row sm:items-center sm:justify-between">
           {prevSession ? (

@@ -10,7 +10,9 @@ export default async function NewBookingPage() {
 
   const [{ data: users }, { data: sessions }] = await Promise.all([
     supabase.rpc("list_profiles_for_booking"),
-    supabase.from("sessions").select("id, title").order("position"),
+    // Only top-level sessions are bookable — a sub-topic is organizational
+    // content nested inside one, not something a trainee books separately.
+    supabase.from("sessions").select("id, title").is("parent_id", null).order("position"),
   ]);
 
   return (

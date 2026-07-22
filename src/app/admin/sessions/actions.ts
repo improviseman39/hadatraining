@@ -20,14 +20,30 @@ export async function createSession(formData: FormData) {
   const supabase = createClient();
 
   const slug = String(formData.get("slug") ?? "").trim();
-  const category = String(formData.get("category") ?? "");
+  const parentId = String(formData.get("parent_id") ?? "").trim() || null;
+  let category = String(formData.get("category") ?? "");
+
+  if (parentId) {
+    // Sub-topics inherit their parent's category — they don't appear on the
+    // category-grouped curriculum grid themselves, so it's not a decision
+    // that needs its own UI, just internal consistency.
+    const { data: parent } = await supabase
+      .from("sessions")
+      .select("category")
+      .eq("id", parentId)
+      .single();
+    if (!parent) return { error: "Parent session not found." };
+    category = parent.category;
+  }
+
   if (!slug || !CATEGORIES.includes(category as (typeof CATEGORIES)[number])) {
     return { error: "Slug and a valid category are required." };
   }
 
-  const { data: maxRow } = await supabase
-    .from("sessions")
-    .select("position")
+  const siblingQuery = supabase.from("sessions").select("position");
+  const { data: maxRow } = await (
+    parentId ? siblingQuery.eq("parent_id", parentId) : siblingQuery.is("parent_id", null)
+  )
     .order("position", { ascending: false })
     .limit(1)
     .single();
@@ -44,6 +60,7 @@ export async function createSession(formData: FormData) {
       image_id: String(formData.get("image_id") ?? ""),
       is_free: formData.get("is_free") === "on",
       position: nextPosition,
+      parent_id: parentId,
     })
     .select("id")
     .single();
@@ -71,17 +88,29 @@ export async function updateSession(id: string, formData: FormData) {
     .eq("id", id)
     .single();
 
-  const { error } = await supabase
-    .from("sessions")
-    .update({
-      title: String(formData.get("title") ?? ""),
-      category,
-      summary: String(formData.get("summary") ?? ""),
-      duration: String(formData.get("duration") ?? ""),
-      image_id: String(formData.get("image_id") ?? ""),
-      is_free: formData.get("is_free") === "on",
-    })
-    .eq("id", id);
+  // Only present when the form included a "Parent session" selector (it
+  // always does, from the admin edit page) — an empty value means "make
+  // this a top-level session."
+  const hasParentField = formData.has("parent_id");
+  const newParentId = String(formData.get("parent_id") ?? "").trim() || null;
+  if (newParentId === id) return { error: "A session can't be its own parent." };
+
+  const payload: Record<string, unknown> = {
+    title: String(formData.get("title") ?? ""),
+    category,
+    summary: String(formData.get("summary") ?? ""),
+    duration: String(formData.get("duration") ?? ""),
+    image_id: String(formData.get("image_id") ?? ""),
+  };
+  if (hasParentField) payload.parent_id = newParentId;
+  // Only a top-level session's is_free is directly editable — a sub-topic's
+  // is_free is always inherited from its ancestor (kept in sync by a DB
+  // trigger), so there's no independent value to save for it here.
+  if (!newParentId) {
+    payload.is_free = formData.get("is_free") === "on";
+  }
+
+  const { error } = await supabase.from("sessions").update(payload).eq("id", id);
 
   if (error) return { error: error.message };
 

@@ -5,6 +5,7 @@ import SessionForm from "@/components/admin/SessionForm";
 import BlockEditor from "@/components/admin/BlockEditor";
 import { UnsavedChangesProvider } from "@/components/admin/UnsavedChangesContext";
 import BackToSessionsLink from "@/components/admin/BackToSessionsLink";
+import { buildParentOptions } from "@/lib/sessionTree";
 
 export const dynamic = "force-dynamic";
 
@@ -28,6 +29,9 @@ export default async function EditSessionPage({
     .eq("session_id", params.id)
     .order("position");
 
+  const { data: allSessions } = await supabase.from("sessions").select("id, title, parent_id");
+  const parentOptions = buildParentOptions(allSessions ?? [], session.id);
+
   return (
     <UnsavedChangesProvider>
       <div>
@@ -42,6 +46,8 @@ export default async function EditSessionPage({
               defaultValues={session}
               submitLabel="Save changes"
               lockSlug
+              parentOptions={parentOptions}
+              defaultParentId={session.parent_id}
             />
           </div>
 

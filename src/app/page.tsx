@@ -14,7 +14,9 @@ export default async function HomePage() {
   const supabase = createClient();
 
   const [{ data: sessionRows }, { data: announcementRows }] = await Promise.all([
-    supabase.from("sessions").select("*").order("position"),
+    // Only top-level sessions appear on the curriculum grid — nested
+    // sub-topics are discovered by browsing into their parent's own page.
+    supabase.from("sessions").select("*").is("parent_id", null).order("position"),
     supabase.from("announcements").select("*").order("position"),
   ]);
 

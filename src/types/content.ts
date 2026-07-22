@@ -22,6 +22,8 @@ export type Session = {
   imageId: string;
   isFree: boolean;
   position: number;
+  /** Null = top-level session. Set = nested sub-topic under another session. */
+  parentId: string | null;
 };
 
 export type SessionWithBlocks = Session & { blocks: ContentBlock[] };

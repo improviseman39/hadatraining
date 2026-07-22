@@ -22,7 +22,7 @@ export default async function EditBookingPage({
 
   const [{ data: users }, { data: sessions }] = await Promise.all([
     supabase.rpc("list_profiles_for_booking"),
-    supabase.from("sessions").select("id, title").order("position"),
+    supabase.from("sessions").select("id, title").is("parent_id", null).order("position"),
   ]);
 
   return (
