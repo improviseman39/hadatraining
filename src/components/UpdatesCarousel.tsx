@@ -3,16 +3,10 @@
 import Image from "next/image";
 import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
-import type { Announcement, AnnouncementCategory } from "@/types/content";
-import { unsplashUrl } from "@/data/sessions";
+import type { Announcement } from "@/types/content";
+import { unsplashUrl, announcementCategoryStyles } from "@/data/sessions";
 
 const AUTOPLAY_MS = 6000;
-
-const categoryStyles: Record<AnnouncementCategory, string> = {
-  Seminar: "bg-teal text-porcelain",
-  News: "bg-ink text-porcelain",
-  Event: "bg-terracotta text-porcelain",
-};
 
 function formatDate(iso: string): string {
   return new Date(`${iso}T00:00:00`).toLocaleDateString("en-US", {
@@ -123,7 +117,7 @@ export default function UpdatesCarousel({
                   <div className="flex flex-col justify-center gap-3 p-6 sm:p-8">
                     <div className="flex items-center gap-3">
                       <span
-                        className={`rounded-full px-3 py-1 text-xs font-medium uppercase tracking-wide ${categoryStyles[item.category]}`}
+                        className={`rounded-full px-3 py-1 text-xs font-medium uppercase tracking-wide ${announcementCategoryStyles[item.category]}`}
                       >
                         {item.category}
                       </span>
