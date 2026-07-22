@@ -6,6 +6,7 @@ import { usePathname } from "next/navigation";
 import { useAuth } from "@/context/AuthContext";
 import { useRequestWidget } from "@/context/RequestWidgetContext";
 import { createClient } from "@/lib/supabase/client";
+import SiteSearch from "@/components/SiteSearch";
 
 export default function SiteHeader() {
   const { isMember, isReady, role, logout } = useAuth();
@@ -58,6 +59,7 @@ export default function SiteHeader() {
           >
             Updates
           </Link>
+          <SiteSearch />
 
           {isReady && isMember ? (
             <div className="flex items-center gap-3">
