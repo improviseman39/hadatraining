@@ -114,7 +114,15 @@ export default async function HomePage() {
                     {categorySessions.length > 1 ? "s" : ""}
                   </span>
                 </div>
-                <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3">
+                <div
+                  className={`grid gap-5 ${
+                    categorySessions.length === 1
+                      ? "max-w-sm grid-cols-1"
+                      : categorySessions.length === 2
+                        ? "max-w-3xl grid-cols-1 sm:grid-cols-2"
+                        : "grid-cols-1 sm:grid-cols-2 lg:grid-cols-3"
+                  }`}
+                >
                   {categorySessions.map((session) => (
                     <SessionCard key={session.slug} session={session} />
                   ))}
