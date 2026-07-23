@@ -21,7 +21,14 @@ export default async function HomePage() {
   ]);
 
   const sessions = (sessionRows ?? []).map(mapSession);
-  const announcements = (announcementRows ?? []).map(mapAnnouncement);
+  // Seminars/Events carry a real occurrence date, so once that date has
+  // passed there's nothing left to promote — drop them from the public
+  // site. News posts have no such expiry (the date is just when it was
+  // published), so they're left alone.
+  const today = new Date().toISOString().slice(0, 10);
+  const announcements = (announcementRows ?? [])
+    .map(mapAnnouncement)
+    .filter((item) => item.category === "News" || item.date >= today);
 
   return (
     <>

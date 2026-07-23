@@ -11,6 +11,7 @@ export default async function AdminAnnouncementsPage() {
     .from("announcements")
     .select("id, title, category, date, position")
     .order("position");
+  const today = new Date().toISOString().slice(0, 10);
 
   return (
     <div>
@@ -32,11 +33,14 @@ export default async function AdminAnnouncementsPage() {
               <th className="px-4 py-3">Title</th>
               <th className="px-4 py-3">Category</th>
               <th className="px-4 py-3">Date</th>
+              <th className="px-4 py-3">Status</th>
               <th className="px-4 py-3 text-right">Actions</th>
             </tr>
           </thead>
           <tbody>
-            {(announcements ?? []).map((item, i) => (
+            {(announcements ?? []).map((item, i) => {
+              const isExpired = item.category !== "News" && item.date < today;
+              return (
               <tr key={item.id} className="border-b border-ink/5 last:border-0">
                 <td className="px-4 py-3 text-muted">{item.position}</td>
                 <td className="px-4 py-3 font-medium text-ink">
@@ -46,6 +50,19 @@ export default async function AdminAnnouncementsPage() {
                 </td>
                 <td className="px-4 py-3 text-muted">{item.category}</td>
                 <td className="px-4 py-3 text-muted">{item.date}</td>
+                <td className="px-4 py-3">
+                  {isExpired ? (
+                    <span className="rounded-full bg-terracotta/10 px-2.5 py-1 text-xs font-medium text-terracotta">
+                      Expired · hidden from site
+                    </span>
+                  ) : item.category === "News" ? (
+                    <span className="text-xs text-muted">—</span>
+                  ) : (
+                    <span className="rounded-full bg-teal/10 px-2.5 py-1 text-xs font-medium text-teal-dark">
+                      Live
+                    </span>
+                  )}
+                </td>
                 <td className="px-4 py-3">
                   <div className="flex items-center justify-end gap-1.5">
                     <ActionButton
@@ -80,7 +97,8 @@ export default async function AdminAnnouncementsPage() {
                   </div>
                 </td>
               </tr>
-            ))}
+              );
+            })}
           </tbody>
         </table>
       </div>
