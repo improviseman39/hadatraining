@@ -5,16 +5,9 @@ import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 import type { Announcement } from "@/types/content";
 import { announcementCategoryStyles } from "@/data/sessions";
+import { formatAnnouncementDate } from "@/lib/formatAnnouncementDate";
 
 const AUTOPLAY_MS = 6000;
-
-function formatDate(iso: string): string {
-  return new Date(`${iso}T00:00:00`).toLocaleDateString("en-US", {
-    month: "long",
-    day: "numeric",
-    year: "numeric",
-  });
-}
 
 export default function UpdatesCarousel({
   items,
@@ -130,7 +123,11 @@ export default function UpdatesCarousel({
                       {item.category}
                     </span>
                     <span className="text-xs font-medium uppercase tracking-wide text-muted">
-                      {formatDate(item.date)}
+                      {formatAnnouncementDate(item.date, item.endDate, {
+                        month: "long",
+                        day: "numeric",
+                        year: "numeric",
+                      })}
                     </span>
                   </div>
                   <h3 className="font-serif text-xl text-ink sm:text-2xl">

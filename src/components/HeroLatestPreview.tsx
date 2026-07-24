@@ -2,13 +2,7 @@ import Image from "next/image";
 import Link from "next/link";
 import type { Announcement } from "@/types/content";
 import { announcementCategoryStyles } from "@/data/sessions";
-
-function formatDate(iso: string): string {
-  return new Date(`${iso}T00:00:00`).toLocaleDateString("en-US", {
-    month: "short",
-    day: "numeric",
-  });
-}
+import { formatAnnouncementDate } from "@/lib/formatAnnouncementDate";
 
 /**
  * Compact preview so "Latest at HADA" is visible alongside the curriculum
@@ -44,7 +38,9 @@ export default function HeroLatestPreview({ items }: { items: Announcement[] }) 
                   >
                     {item.category}
                   </span>
-                  <span className="text-[11px] text-muted">{formatDate(item.date)}</span>
+                  <span className="text-[11px] text-muted">
+                    {formatAnnouncementDate(item.date, item.endDate, { month: "short", day: "numeric" })}
+                  </span>
                 </div>
                 <p className="mt-0.5 truncate text-sm font-medium text-ink">{item.title}</p>
               </div>

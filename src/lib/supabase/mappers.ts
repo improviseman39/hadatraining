@@ -48,6 +48,8 @@ type AnnouncementRow = {
   title: string;
   description: string;
   date: string;
+  end_date: string | null;
+  always_visible: boolean;
   image_id: string | null;
   image_storage_path: string | null;
   video_url: string | null;
@@ -98,6 +100,8 @@ export function mapAnnouncement(row: AnnouncementRow): Announcement {
     title: row.title,
     description: row.description,
     date: row.date,
+    endDate: row.end_date,
+    alwaysVisible: row.always_visible,
     imageId: row.image_id,
     imageUrl: announcementImageUrl(row.image_id, row.image_storage_path),
     videoUrl: row.video_url,

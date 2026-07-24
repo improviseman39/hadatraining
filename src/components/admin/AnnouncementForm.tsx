@@ -19,6 +19,8 @@ export default function AnnouncementForm({
     category?: string;
     description?: string;
     date?: string;
+    end_date?: string | null;
+    always_visible?: boolean;
     image_id?: string | null;
     image_storage_path?: string | null;
     video_url?: string | null;
@@ -85,6 +87,31 @@ export default function AnnouncementForm({
             defaultValue={defaultValues?.date}
             className="w-full rounded-lg border border-ink/15 bg-porcelain px-3 py-2 text-sm text-ink focus:border-teal focus:outline-none focus:ring-2 focus:ring-teal/30"
           />
+        </div>
+      </div>
+
+      <div className="grid grid-cols-1 gap-5 sm:grid-cols-2">
+        <div>
+          <label className="mb-1.5 block text-sm font-medium text-ink">
+            End date <span className="font-normal text-muted">(optional — only for multi-day events)</span>
+          </label>
+          <input
+            type="date"
+            name="end_date"
+            defaultValue={defaultValues?.end_date ?? ""}
+            className="w-full rounded-lg border border-ink/15 bg-porcelain px-3 py-2 text-sm text-ink focus:border-teal focus:outline-none focus:ring-2 focus:ring-teal/30"
+          />
+        </div>
+        <div className="flex items-end pb-2.5">
+          <label className="flex items-center gap-2 text-sm text-ink">
+            <input
+              type="checkbox"
+              name="always_visible"
+              defaultChecked={defaultValues?.always_visible ?? false}
+              className="h-4 w-4 rounded border-ink/25 text-teal focus:ring-teal/30"
+            />
+            Keep showing on the site after this date passes
+          </label>
         </div>
       </div>
 

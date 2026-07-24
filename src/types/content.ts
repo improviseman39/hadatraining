@@ -36,6 +36,10 @@ export type Announcement = {
   title: string;
   description: string;
   date: string;
+  /** Optional — set only for announcements that run across multiple days. */
+  endDate: string | null;
+  /** Admin override: keep showing on the public site even once the (end) date has passed. */
+  alwaysVisible: boolean;
   imageId: string | null;
   /** Resolved, always-usable image URL — from image_storage_path if an image was
    * uploaded, otherwise built from imageId (the older Unsplash-photo-id field). */

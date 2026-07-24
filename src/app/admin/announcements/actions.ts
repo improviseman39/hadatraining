@@ -57,6 +57,8 @@ export async function createAnnouncement(formData: FormData) {
   }
 
   const date = String(formData.get("date") ?? "");
+  const endDate = String(formData.get("end_date") ?? "").trim() || null;
+  const alwaysVisible = formData.get("always_visible") === "on";
   const nextPosition = await insertAtDateSortedPosition(supabase, date);
 
   const href = String(formData.get("href") ?? "").trim() || null;
@@ -72,6 +74,8 @@ export async function createAnnouncement(formData: FormData) {
     title: String(formData.get("title") ?? ""),
     description: String(formData.get("description") ?? ""),
     date,
+    end_date: endDate,
+    always_visible: alwaysVisible,
     image_id: imageStoragePath ? null : imageId,
     image_storage_path: imageStoragePath,
     video_url: videoUrl,
@@ -115,6 +119,8 @@ export async function updateAnnouncement(id: string, formData: FormData) {
       title: String(formData.get("title") ?? ""),
       description: String(formData.get("description") ?? ""),
       date: String(formData.get("date") ?? ""),
+      end_date: String(formData.get("end_date") ?? "").trim() || null,
+      always_visible: formData.get("always_visible") === "on",
       image_id: imageStoragePath ? null : imageId,
       image_storage_path: imageStoragePath,
       video_url: videoUrl,

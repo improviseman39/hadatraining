@@ -9,7 +9,7 @@ export default async function AdminAnnouncementsPage() {
   const supabase = createClient();
   const { data: announcements } = await supabase
     .from("announcements")
-    .select("id, title, category, date, position")
+    .select("id, title, category, date, end_date, always_visible, position")
     .order("position");
   const today = new Date().toISOString().slice(0, 10);
 
@@ -39,7 +39,9 @@ export default async function AdminAnnouncementsPage() {
           </thead>
           <tbody>
             {(announcements ?? []).map((item, i) => {
-              const isExpired = item.category !== "News" && item.date < today;
+              const lastVisibleDay =
+                item.end_date && item.end_date > item.date ? item.end_date : item.date;
+              const isPastDue = lastVisibleDay < today;
               return (
               <tr key={item.id} className="border-b border-ink/5 last:border-0">
                 <td className="px-4 py-3 text-muted">{item.position}</td>
@@ -49,14 +51,19 @@ export default async function AdminAnnouncementsPage() {
                   </Link>
                 </td>
                 <td className="px-4 py-3 text-muted">{item.category}</td>
-                <td className="px-4 py-3 text-muted">{item.date}</td>
+                <td className="px-4 py-3 text-muted">
+                  {item.date}
+                  {item.end_date && item.end_date > item.date ? ` – ${item.end_date}` : ""}
+                </td>
                 <td className="px-4 py-3">
-                  {isExpired ? (
+                  {isPastDue && item.always_visible ? (
+                    <span className="rounded-full bg-teal/10 px-2.5 py-1 text-xs font-medium text-teal-dark">
+                      Expired · kept visible
+                    </span>
+                  ) : isPastDue ? (
                     <span className="rounded-full bg-terracotta/10 px-2.5 py-1 text-xs font-medium text-terracotta">
                       Expired · hidden from site
                     </span>
-                  ) : item.category === "News" ? (
-                    <span className="text-xs text-muted">—</span>
                   ) : (
                     <span className="rounded-full bg-teal/10 px-2.5 py-1 text-xs font-medium text-teal-dark">
                       Live

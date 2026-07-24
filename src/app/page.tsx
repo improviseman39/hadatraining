@@ -21,14 +21,18 @@ export default async function HomePage() {
   ]);
 
   const sessions = (sessionRows ?? []).map(mapSession);
-  // Seminars/Events carry a real occurrence date, so once that date has
-  // passed there's nothing left to promote — drop them from the public
-  // site. News posts have no such expiry (the date is just when it was
-  // published), so they're left alone.
+  // Once an announcement's last relevant day has passed, drop it from the
+  // public site — unless the admin explicitly pinned it to stay visible.
+  // A multi-day announcement's last day is its end date; otherwise it's
+  // just its date (and an end date mistakenly set before the start date
+  // can't make it disappear early).
   const today = new Date().toISOString().slice(0, 10);
   const announcements = (announcementRows ?? [])
     .map(mapAnnouncement)
-    .filter((item) => item.category === "News" || item.date >= today);
+    .filter((item) => {
+      const lastVisibleDay = item.endDate && item.endDate > item.date ? item.endDate : item.date;
+      return item.alwaysVisible || lastVisibleDay >= today;
+    });
 
   return (
     <>
