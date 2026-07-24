@@ -3,7 +3,6 @@
 import Image from "next/image";
 import Link from "next/link";
 import type { Session } from "@/types/content";
-import { unsplashUrl } from "@/data/sessions";
 import { useAuth } from "@/context/AuthContext";
 
 function pad(n: number): string {
@@ -21,7 +20,7 @@ export default function SessionCard({ session }: { session: Session }) {
     >
       <div className="relative h-40 w-full overflow-hidden">
         <Image
-          src={unsplashUrl(session.imageId, 700)}
+          src={session.imageUrl}
           alt=""
           fill
           sizes="(min-width: 1024px) 380px, (min-width: 640px) 50vw, 100vw"
@@ -40,9 +39,11 @@ export default function SessionCard({ session }: { session: Session }) {
             Members
           </span>
         )}
-        <span className="absolute bottom-4 left-4 rounded-full border border-porcelain/40 bg-ink/40 px-3 py-1 text-xs font-medium text-porcelain backdrop-blur-sm">
-          {session.duration}
-        </span>
+        {session.duration && (
+          <span className="absolute bottom-4 left-4 rounded-full border border-porcelain/40 bg-ink/40 px-3 py-1 text-xs font-medium text-porcelain backdrop-blur-sm">
+            {session.duration}
+          </span>
+        )}
       </div>
 
       <div className="flex flex-1 flex-col p-6 sm:p-7">

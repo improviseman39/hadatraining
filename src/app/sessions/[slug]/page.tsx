@@ -1,7 +1,6 @@
 import Image from "next/image";
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { unsplashUrl } from "@/data/sessions";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { mapSession, mapSessionWithBlocks } from "@/lib/supabase/mappers";
@@ -129,7 +128,7 @@ export default async function SessionPage({
     <article>
       <div className="relative h-64 w-full overflow-hidden border-b border-ink/10 sm:h-80">
         <Image
-          src={unsplashUrl(session.imageId, 1600, 70)}
+          src={session.imageUrl}
           alt=""
           fill
           priority
@@ -158,9 +157,11 @@ export default async function SessionPage({
             <span className="rounded-full border border-porcelain/30 px-3 py-1 text-xs font-medium uppercase tracking-wide text-porcelain/90">
               {session.category}
             </span>
-            <span className="text-xs font-medium uppercase tracking-wide text-porcelain/70">
-              {session.duration}
-            </span>
+            {session.duration && (
+              <span className="text-xs font-medium uppercase tracking-wide text-porcelain/70">
+                {session.duration}
+              </span>
+            )}
             {!session.isFree && (
               <span className="flex items-center gap-1.5 rounded-full bg-terracotta/90 px-3 py-1 text-xs font-medium text-porcelain">
                 Members only
@@ -178,12 +179,22 @@ export default async function SessionPage({
           {session.summary}
         </p>
 
+        {subTopics.length > 0 && (
+          <a
+            href="#sub-topics"
+            className="mt-5 inline-flex items-center gap-2 rounded-full border border-teal/30 bg-teal/10 px-4 py-2 text-sm font-medium text-teal-dark transition-colors hover:border-teal"
+          >
+            This session includes {subTopics.length} sub-topic{subTopics.length > 1 ? "s" : ""}
+            <span aria-hidden="true">&darr;</span>
+          </a>
+        )}
+
         <div className="mt-10 sm:mt-12">
           <SessionContent session={session} />
         </div>
 
         {subTopics.length > 0 && (
-          <div className="mt-16 border-t border-ink/10 pt-10 sm:mt-20">
+          <div id="sub-topics" className="mt-16 scroll-mt-24 border-t border-ink/10 pt-10 sm:mt-20">
             <h2 className="font-serif text-2xl text-ink">Inside this session</h2>
             <p className="mt-2 text-sm text-muted">
               {subTopics.length} sub-topic{subTopics.length > 1 ? "s" : ""}

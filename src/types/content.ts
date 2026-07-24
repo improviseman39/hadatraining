@@ -18,8 +18,9 @@ export type Session = {
   title: string;
   category: SessionCategory;
   summary: string;
-  duration: string;
-  imageId: string;
+  /** Optional — not every session shows a runtime badge. */
+  duration: string | null;
+  imageUrl: string;
   isFree: boolean;
   position: number;
   /** Null = top-level session. Set = nested sub-topic under another session. */

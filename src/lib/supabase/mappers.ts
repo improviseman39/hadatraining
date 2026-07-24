@@ -7,6 +7,8 @@ import type {
 import { unsplashUrl } from "@/data/sessions";
 
 const ANNOUNCEMENT_IMAGES_BUCKET = "announcement-images";
+const SESSION_IMAGES_BUCKET = "session-images";
+const FALLBACK_IMAGE_ID = "1516549655169-df83a0774514";
 
 function announcementImageUrl(imageId: string | null, storagePath: string | null): string {
   if (storagePath) {
@@ -15,7 +17,15 @@ function announcementImageUrl(imageId: string | null, storagePath: string | null
   if (imageId) return unsplashUrl(imageId, 900);
   // Shouldn't happen in practice — the form requires one or the other — but
   // fall back to something rather than an empty/broken image src.
-  return unsplashUrl("1516549655169-df83a0774514", 900);
+  return unsplashUrl(FALLBACK_IMAGE_ID, 900);
+}
+
+function sessionImageUrl(imageId: string | null, storagePath: string | null): string {
+  if (storagePath) {
+    return `${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/${SESSION_IMAGES_BUCKET}/${storagePath}`;
+  }
+  if (imageId) return unsplashUrl(imageId, 1600, 70);
+  return unsplashUrl(FALLBACK_IMAGE_ID, 1600, 70);
 }
 
 type SessionRow = {
@@ -24,8 +34,9 @@ type SessionRow = {
   title: string;
   category: Session["category"];
   summary: string;
-  duration: string;
-  image_id: string;
+  duration: string | null;
+  image_id: string | null;
+  image_storage_path: string | null;
   is_free: boolean;
   position: number;
   parent_id: string | null;
@@ -65,7 +76,7 @@ export function mapSession(row: SessionRow): Session {
     category: row.category,
     summary: row.summary,
     duration: row.duration,
-    imageId: row.image_id,
+    imageUrl: sessionImageUrl(row.image_id, row.image_storage_path),
     isFree: row.is_free,
     position: row.position,
     parentId: row.parent_id,

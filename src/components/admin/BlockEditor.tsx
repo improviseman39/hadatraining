@@ -144,6 +144,7 @@ function EditableBlockRow({ block, sessionId }: { block: Block; sessionId: strin
   const [editing, setEditing] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [uploading, setUploading] = useState(false);
+  const [dirty, setDirty] = useState(false);
   const [pending, startTransition] = useTransition();
   const unsaved = useUnsavedChanges();
   const dirtyKey = `block-${block.id}`;
@@ -176,7 +177,10 @@ function EditableBlockRow({ block, sessionId }: { block: Block; sessionId: strin
       <li className="rounded-xl border border-teal/30 bg-teal/5 p-4">
         <form
           onSubmit={handleSubmit}
-          onChange={() => unsaved?.setDirty(dirtyKey, true)}
+          onChange={() => {
+            setDirty(true);
+            unsaved?.setDirty(dirtyKey, true);
+          }}
           className="flex flex-col gap-3"
         >
           <span className="text-xs font-medium uppercase tracking-wide text-muted">
@@ -189,11 +193,11 @@ function EditableBlockRow({ block, sessionId }: { block: Block; sessionId: strin
               Wait for the upload to finish before saving — Save is disabled until then.
             </p>
           )}
-          <div className="flex gap-2">
+          <div className="flex items-center gap-2">
             <button
               type="submit"
-              disabled={pending || uploading}
-              className="rounded-full bg-teal px-4 py-1.5 text-xs font-medium text-porcelain hover:bg-teal-dark disabled:opacity-60"
+              disabled={pending || uploading || !dirty}
+              className="rounded-full bg-teal px-4 py-1.5 text-xs font-medium text-porcelain hover:bg-teal-dark disabled:cursor-not-allowed disabled:bg-ink/20 disabled:text-muted"
             >
               {pending ? "Saving…" : "Save"}
             </button>
@@ -204,6 +208,7 @@ function EditableBlockRow({ block, sessionId }: { block: Block; sessionId: strin
             >
               Cancel
             </button>
+            {!dirty && <span className="text-xs text-muted">No changes yet</span>}
           </div>
         </form>
       </li>

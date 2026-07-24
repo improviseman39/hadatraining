@@ -19,7 +19,7 @@ export default function SessionContent({ session }: { session: SessionWithBlocks
   const locked = !session.isFree && (!isReady || !isMember);
 
   if (locked) {
-    return <LockGate imageId={session.imageId} title={session.title} />;
+    return <LockGate imageUrl={session.imageUrl} title={session.title} />;
   }
 
   return (

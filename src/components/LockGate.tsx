@@ -1,19 +1,18 @@
 import Image from "next/image";
 import Link from "next/link";
-import { unsplashUrl } from "@/data/sessions";
 
 export default function LockGate({
-  imageId,
+  imageUrl,
   title,
 }: {
-  imageId: string;
+  imageUrl: string;
   title: string;
 }) {
   return (
     <div className="relative overflow-hidden rounded-2xl border border-ink/10">
       <div className="relative h-80 w-full sm:h-96">
         <Image
-          src={unsplashUrl(imageId, 1200)}
+          src={imageUrl}
           alt=""
           fill
           sizes="100vw"

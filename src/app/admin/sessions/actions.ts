@@ -40,6 +40,12 @@ export async function createSession(formData: FormData) {
     return { error: "Slug and a valid category are required." };
   }
 
+  const imageStoragePath = String(formData.get("image_storage_path") ?? "").trim() || null;
+  const imageId = String(formData.get("image_id") ?? "").trim() || null;
+  if (!imageStoragePath && !imageId) {
+    return { error: "Upload an image or provide an Unsplash photo id." };
+  }
+
   const siblingQuery = supabase.from("sessions").select("position");
   const { data: maxRow } = await (
     parentId ? siblingQuery.eq("parent_id", parentId) : siblingQuery.is("parent_id", null)
@@ -56,8 +62,9 @@ export async function createSession(formData: FormData) {
       title: String(formData.get("title") ?? ""),
       category,
       summary: String(formData.get("summary") ?? ""),
-      duration: String(formData.get("duration") ?? ""),
-      image_id: String(formData.get("image_id") ?? ""),
+      duration: String(formData.get("duration") ?? "").trim() || null,
+      image_id: imageStoragePath ? null : imageId,
+      image_storage_path: imageStoragePath,
       is_free: formData.get("is_free") === "on",
       position: nextPosition,
       parent_id: parentId,
@@ -84,9 +91,15 @@ export async function updateSession(id: string, formData: FormData) {
 
   const { data: existing } = await supabase
     .from("sessions")
-    .select("slug")
+    .select("slug, image_storage_path")
     .eq("id", id)
     .single();
+
+  const imageStoragePath = String(formData.get("image_storage_path") ?? "").trim() || null;
+  const imageId = String(formData.get("image_id") ?? "").trim() || null;
+  if (!imageStoragePath && !imageId) {
+    return { error: "Upload an image or provide an Unsplash photo id." };
+  }
 
   // Only present when the form included a "Parent session" selector (it
   // always does, from the admin edit page) — an empty value means "make
@@ -99,8 +112,9 @@ export async function updateSession(id: string, formData: FormData) {
     title: String(formData.get("title") ?? ""),
     category,
     summary: String(formData.get("summary") ?? ""),
-    duration: String(formData.get("duration") ?? ""),
-    image_id: String(formData.get("image_id") ?? ""),
+    duration: String(formData.get("duration") ?? "").trim() || null,
+    image_id: imageStoragePath ? null : imageId,
+    image_storage_path: imageStoragePath,
   };
   if (hasParentField) payload.parent_id = newParentId;
   // Only a top-level session's is_free is directly editable — a sub-topic's
@@ -111,6 +125,10 @@ export async function updateSession(id: string, formData: FormData) {
   }
 
   const { error } = await supabase.from("sessions").update(payload).eq("id", id);
+
+  if (!error && existing?.image_storage_path && existing.image_storage_path !== imageStoragePath) {
+    await supabase.storage.from("session-images").remove([existing.image_storage_path]);
+  }
 
   if (error) return { error: error.message };
 
