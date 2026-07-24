@@ -16,13 +16,24 @@ export default function SubTopicsSidebar({
   subTopics,
   currentSlug,
   heading = "Inside this session",
+  parentLink,
 }: {
   subTopics: Session[];
   currentSlug?: string;
   heading?: string;
+  /** When set, shows a link back up to the main session a sub-topic belongs to. */
+  parentLink?: { slug: string; title: string } | null;
 }) {
   return (
     <div className="rounded-2xl border border-ink/10 bg-card p-4 shadow-sm">
+      {parentLink && (
+        <Link
+          href={`/sessions/${parentLink.slug}`}
+          className="mb-3 flex items-center gap-1.5 px-1 text-xs font-medium text-teal transition-colors hover:text-teal-dark"
+        >
+          <span aria-hidden="true">&larr;</span> Back to {parentLink.title}
+        </Link>
+      )}
       <h2 className="px-1 font-serif text-base text-ink">{heading}</h2>
       <p className="px-1 mt-1 text-xs text-muted">
         {subTopics.length} sub-topic{subTopics.length > 1 ? "s" : ""}

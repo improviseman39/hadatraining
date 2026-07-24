@@ -142,7 +142,8 @@ export default async function SessionPage({
 
   const subTopics = children.length > 0 ? children : siblings;
   const isSiblingList = children.length === 0 && siblings.length > 0;
-  const parentTitle = breadcrumb.at(-1)?.title ?? null;
+  const parentCrumb = breadcrumb.at(-1) ?? null;
+  const parentTitle = parentCrumb?.title ?? null;
   const sidebarHeading = isSiblingList && parentTitle ? `More in ${parentTitle}` : "Inside this session";
 
   return (
@@ -199,7 +200,12 @@ export default async function SessionPage({
         <div className={subTopics.length > 0 ? "lg:grid lg:grid-cols-[280px_1fr] lg:items-start lg:gap-10" : undefined}>
           {subTopics.length > 0 && (
             <aside className="hidden lg:sticky lg:top-24 lg:block">
-              <SubTopicsSidebar subTopics={subTopics} currentSlug={session.slug} heading={sidebarHeading} />
+              <SubTopicsSidebar
+                subTopics={subTopics}
+                currentSlug={session.slug}
+                heading={sidebarHeading}
+                parentLink={isSiblingList ? parentCrumb : null}
+              />
             </aside>
           )}
 
@@ -225,6 +231,14 @@ export default async function SessionPage({
 
         {subTopics.length > 0 && (
           <div id="sub-topics" className="mt-16 scroll-mt-24 border-t border-ink/10 pt-10 sm:mt-20 lg:hidden">
+            {isSiblingList && parentCrumb && (
+              <Link
+                href={`/sessions/${parentCrumb.slug}`}
+                className="mb-3 inline-flex items-center gap-1.5 text-sm font-medium text-teal transition-colors hover:text-teal-dark"
+              >
+                <span aria-hidden="true">&larr;</span> Back to {parentCrumb.title}
+              </Link>
+            )}
             <h2 className="font-serif text-2xl text-ink">{sidebarHeading}</h2>
             <p className="mt-2 text-sm text-muted">
               {subTopics.length} sub-topic{subTopics.length > 1 ? "s" : ""}
