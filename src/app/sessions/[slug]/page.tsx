@@ -6,6 +6,7 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { mapSession, mapSessionWithBlocks } from "@/lib/supabase/mappers";
 import SessionContent from "@/components/SessionContent";
 import SessionCard from "@/components/SessionCard";
+import SubTopicsBanner from "@/components/SubTopicsBanner";
 import type { SessionWithBlocks } from "@/types/content";
 
 type Crumb = { slug: string; title: string };
@@ -179,15 +180,7 @@ export default async function SessionPage({
           {session.summary}
         </p>
 
-        {subTopics.length > 0 && (
-          <a
-            href="#sub-topics"
-            className="mt-5 inline-flex items-center gap-2 rounded-full border border-teal/30 bg-teal/10 px-4 py-2 text-sm font-medium text-teal-dark transition-colors hover:border-teal"
-          >
-            This session includes {subTopics.length} sub-topic{subTopics.length > 1 ? "s" : ""}
-            <span aria-hidden="true">&darr;</span>
-          </a>
-        )}
+        {subTopics.length > 0 && <SubTopicsBanner count={subTopics.length} />}
 
         <div className="mt-10 sm:mt-12">
           <SessionContent session={session} />
