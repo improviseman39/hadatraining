@@ -6,7 +6,7 @@
  * first paint, and the browser's native hash-jump can race that hydration
  * and land short. Scrolling explicitly on click sidesteps that.
  */
-export default function SubTopicsBanner({ count }: { count: number }) {
+export default function SubTopicsBanner({ count, label }: { count: number; label?: string }) {
   function handleClick(event: React.MouseEvent<HTMLAnchorElement>) {
     event.preventDefault();
     document.getElementById("sub-topics")?.scrollIntoView({ behavior: "smooth" });
@@ -19,7 +19,7 @@ export default function SubTopicsBanner({ count }: { count: number }) {
       onClick={handleClick}
       className="mt-5 inline-flex items-center gap-2 rounded-full border border-teal/30 bg-teal/10 px-4 py-2 text-sm font-medium text-teal-dark transition-colors hover:border-teal"
     >
-      This session includes {count} sub-topic{count > 1 ? "s" : ""}
+      {label ?? `This session includes ${count} sub-topic${count > 1 ? "s" : ""}`}
       <span aria-hidden="true">&darr;</span>
     </a>
   );

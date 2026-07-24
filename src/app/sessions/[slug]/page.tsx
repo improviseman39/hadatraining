@@ -124,7 +124,26 @@ export default async function SessionPage({
     .select("*")
     .eq("parent_id", session.id)
     .order("position");
-  const subTopics = (childRows ?? []).map(mapSession);
+  const children = (childRows ?? []).map(mapSession);
+
+  // Viewing a sub-topic itself has no children of its own — show its
+  // siblings instead (including itself, highlighted), fetched via the
+  // shared parent, so the list of "other sessions in here" stays visible
+  // no matter which sub-topic you're currently on.
+  let siblings: typeof children = [];
+  if (children.length === 0 && session.parentId) {
+    const { data: siblingRows } = await supabase
+      .from("sessions")
+      .select("*")
+      .eq("parent_id", session.parentId)
+      .order("position");
+    siblings = (siblingRows ?? []).map(mapSession);
+  }
+
+  const subTopics = children.length > 0 ? children : siblings;
+  const isSiblingList = children.length === 0 && siblings.length > 0;
+  const parentTitle = breadcrumb.at(-1)?.title ?? null;
+  const sidebarHeading = isSiblingList && parentTitle ? `More in ${parentTitle}` : "Inside this session";
 
   return (
     <article>
@@ -180,7 +199,7 @@ export default async function SessionPage({
         <div className={subTopics.length > 0 ? "lg:grid lg:grid-cols-[280px_1fr] lg:items-start lg:gap-10" : undefined}>
           {subTopics.length > 0 && (
             <aside className="hidden lg:sticky lg:top-24 lg:block">
-              <SubTopicsSidebar subTopics={subTopics} />
+              <SubTopicsSidebar subTopics={subTopics} currentSlug={session.slug} heading={sidebarHeading} />
             </aside>
           )}
 
@@ -191,7 +210,10 @@ export default async function SessionPage({
 
             {subTopics.length > 0 && (
               <div className="lg:hidden">
-                <SubTopicsBanner count={subTopics.length} />
+                <SubTopicsBanner
+                  count={subTopics.length}
+                  label={isSiblingList ? `More in ${parentTitle}` : undefined}
+                />
               </div>
             )}
 
@@ -203,7 +225,7 @@ export default async function SessionPage({
 
         {subTopics.length > 0 && (
           <div id="sub-topics" className="mt-16 scroll-mt-24 border-t border-ink/10 pt-10 sm:mt-20 lg:hidden">
-            <h2 className="font-serif text-2xl text-ink">Inside this session</h2>
+            <h2 className="font-serif text-2xl text-ink">{sidebarHeading}</h2>
             <p className="mt-2 text-sm text-muted">
               {subTopics.length} sub-topic{subTopics.length > 1 ? "s" : ""}
             </p>
