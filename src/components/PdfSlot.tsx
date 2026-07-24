@@ -59,7 +59,7 @@ export default function PdfSlot({ hasPdf, pdfUrl, title }: PdfSlotProps) {
   }
 
   return (
-    <div className="flex h-[520px] items-center gap-4 rounded-2xl border border-dashed border-ink/20 bg-ink/[0.03] p-6 sm:h-[75vh]">
+    <div className="flex items-center gap-4 rounded-2xl border border-dashed border-ink/20 bg-ink/[0.03] p-6">
       <span
         aria-hidden="true"
         className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full border border-ink/15 text-muted"

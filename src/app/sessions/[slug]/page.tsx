@@ -7,6 +7,7 @@ import { mapSession, mapSessionWithBlocks } from "@/lib/supabase/mappers";
 import SessionContent from "@/components/SessionContent";
 import SessionCard from "@/components/SessionCard";
 import SubTopicsBanner from "@/components/SubTopicsBanner";
+import SubTopicsSidebar from "@/components/SubTopicsSidebar";
 import type { SessionWithBlocks } from "@/types/content";
 
 type Crumb = { slug: string; title: string };
@@ -176,18 +177,32 @@ export default async function SessionPage({
       </div>
 
       <div className="container-page py-12 sm:py-16">
-        <p className="max-w-2xl text-base leading-relaxed text-muted sm:text-lg">
-          {session.summary}
-        </p>
+        <div className={subTopics.length > 0 ? "lg:grid lg:grid-cols-[280px_1fr] lg:items-start lg:gap-10" : undefined}>
+          {subTopics.length > 0 && (
+            <aside className="hidden lg:sticky lg:top-24 lg:block">
+              <SubTopicsSidebar subTopics={subTopics} />
+            </aside>
+          )}
 
-        {subTopics.length > 0 && <SubTopicsBanner count={subTopics.length} />}
+          <div className="min-w-0">
+            <p className="max-w-2xl text-base leading-relaxed text-muted sm:text-lg">
+              {session.summary}
+            </p>
 
-        <div className="mt-10 sm:mt-12">
-          <SessionContent session={session} />
+            {subTopics.length > 0 && (
+              <div className="lg:hidden">
+                <SubTopicsBanner count={subTopics.length} />
+              </div>
+            )}
+
+            <div className="mt-10 sm:mt-12">
+              <SessionContent session={session} />
+            </div>
+          </div>
         </div>
 
         {subTopics.length > 0 && (
-          <div id="sub-topics" className="mt-16 scroll-mt-24 border-t border-ink/10 pt-10 sm:mt-20">
+          <div id="sub-topics" className="mt-16 scroll-mt-24 border-t border-ink/10 pt-10 sm:mt-20 lg:hidden">
             <h2 className="font-serif text-2xl text-ink">Inside this session</h2>
             <p className="mt-2 text-sm text-muted">
               {subTopics.length} sub-topic{subTopics.length > 1 ? "s" : ""}
