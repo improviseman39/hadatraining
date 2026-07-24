@@ -4,7 +4,7 @@ import { useRef, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
 
 const PDF_BUCKET = "session-pdfs";
-const MAX_PDF_BYTES = 20 * 1024 * 1024;
+const MAX_PDF_BYTES = 50 * 1024 * 1024;
 
 export default function PdfUploadField({
   defaultStoragePath,
@@ -33,7 +33,7 @@ export default function PdfUploadField({
       return;
     }
     if (file.size > MAX_PDF_BYTES) {
-      setError("PDF must be under 20MB.");
+      setError("PDF must be under 50MB.");
       setStatus("error");
       if (fileInputRef.current) fileInputRef.current.value = "";
       return;
