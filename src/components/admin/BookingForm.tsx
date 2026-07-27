@@ -1,23 +1,138 @@
 "use client";
 
-import { useEffect, useState, useTransition } from "react";
+import { useEffect, useMemo, useState, useTransition } from "react";
 import { toLocalDatetimeInput } from "@/lib/timezone";
 
 type ActionResult = { error?: string; success?: boolean } | undefined;
+type UserOption = { id: string; email: string; group_id: string | null };
+type GroupOption = { id: string; name: string };
+
+function UserPicker({
+  users,
+  groups,
+}: {
+  users: UserOption[];
+  groups: GroupOption[];
+}) {
+  const [selected, setSelected] = useState<Set<string>>(new Set());
+  const [filter, setFilter] = useState("");
+
+  const groupNameById = useMemo(() => new Map(groups.map((g) => [g.id, g.name])), [groups]);
+
+  const filtered = useMemo(() => {
+    const query = filter.trim().toLowerCase();
+    if (!query) return users;
+    return users.filter((u) => u.email.toLowerCase().includes(query));
+  }, [users, filter]);
+
+  function toggle(id: string) {
+    setSelected((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  }
+
+  function addGroup(groupId: string) {
+    if (!groupId) return;
+    setSelected((prev) => {
+      const next = new Set(prev);
+      for (const u of users) {
+        if (u.group_id === groupId) next.add(u.id);
+      }
+      return next;
+    });
+  }
+
+  function clearAll() {
+    setSelected(new Set());
+  }
+
+  return (
+    <div>
+      <label className="mb-1.5 block text-sm font-medium text-ink">
+        Assign to <span className="font-normal text-muted">({selected.size} selected)</span>
+      </label>
+
+      {groups.length > 0 && (
+        <select
+          value=""
+          onChange={(e) => addGroup(e.target.value)}
+          className="mb-2 w-full rounded-lg border border-ink/15 bg-porcelain px-3 py-2 text-sm text-ink focus:border-teal focus:outline-none focus:ring-2 focus:ring-teal/30"
+        >
+          <option value="">Quick-select a whole group…</option>
+          {groups.map((g) => (
+            <option key={g.id} value={g.id}>
+              {g.name}
+            </option>
+          ))}
+        </select>
+      )}
+
+      <div className="flex items-center gap-2">
+        <input
+          type="text"
+          value={filter}
+          onChange={(e) => setFilter(e.target.value)}
+          placeholder="Filter by email…"
+          className="flex-1 rounded-lg border border-ink/15 bg-porcelain px-3 py-2 text-sm text-ink focus:border-teal focus:outline-none focus:ring-2 focus:ring-teal/30"
+        />
+        {selected.size > 0 && (
+          <button
+            type="button"
+            onClick={clearAll}
+            className="shrink-0 rounded-full border border-ink/15 px-3 py-1.5 text-xs font-medium text-ink hover:border-terracotta hover:text-terracotta"
+          >
+            Clear
+          </button>
+        )}
+      </div>
+
+      <div className="mt-2 max-h-56 overflow-y-auto rounded-lg border border-ink/15 bg-porcelain p-1.5">
+        {filtered.length === 0 && (
+          <p className="p-2 text-sm text-muted">No users match &ldquo;{filter}&rdquo;.</p>
+        )}
+        {filtered.map((u) => (
+          <label
+            key={u.id}
+            className="flex cursor-pointer items-center gap-2.5 rounded-lg px-2 py-1.5 text-sm text-ink hover:bg-card"
+          >
+            <input
+              type="checkbox"
+              name="user_ids"
+              value={u.id}
+              checked={selected.has(u.id)}
+              onChange={() => toggle(u.id)}
+              className="h-4 w-4 rounded border-ink/25 text-teal focus:ring-teal/30"
+            />
+            <span className="min-w-0 flex-1 truncate">{u.email}</span>
+            {u.group_id && groupNameById.has(u.group_id) && (
+              <span className="shrink-0 rounded-full bg-teal/10 px-2 py-0.5 text-[11px] font-medium text-teal-dark">
+                {groupNameById.get(u.group_id)}
+              </span>
+            )}
+          </label>
+        ))}
+      </div>
+    </div>
+  );
+}
 
 export default function BookingForm({
   action,
   users,
+  groups = [],
   sessions,
   defaultValues,
   showUserField,
   submitLabel,
 }: {
   action: (formData: FormData) => Promise<ActionResult>;
-  users: { id: string; email: string }[];
+  users: UserOption[];
+  groups?: GroupOption[];
   sessions: { id: string; title: string }[];
   defaultValues?: {
-    user_id?: string;
     session_id?: string;
     /** Raw UTC ISO timestamps — converted to the viewer's local time client-side. */
     start_at?: string;
@@ -59,26 +174,7 @@ export default function BookingForm({
 
   return (
     <form onSubmit={handleSubmit} className="flex flex-col gap-5">
-      {showUserField && (
-        <div>
-          <label className="mb-1.5 block text-sm font-medium text-ink">User</label>
-          <select
-            name="user_id"
-            required
-            defaultValue={defaultValues?.user_id}
-            className="w-full rounded-lg border border-ink/15 bg-porcelain px-3 py-2 text-sm text-ink focus:border-teal focus:outline-none focus:ring-2 focus:ring-teal/30"
-          >
-            <option value="" disabled>
-              Select a user
-            </option>
-            {users.map((u) => (
-              <option key={u.id} value={u.id}>
-                {u.email}
-              </option>
-            ))}
-          </select>
-        </div>
-      )}
+      {showUserField && <UserPicker users={users} groups={groups} />}
 
       <div>
         <label className="mb-1.5 block text-sm font-medium text-ink">Topic</label>

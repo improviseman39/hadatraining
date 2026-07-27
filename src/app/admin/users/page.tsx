@@ -3,6 +3,7 @@ import { createClient } from "@/lib/supabase/server";
 import InviteUserForm from "@/components/admin/InviteUserForm";
 import CreateUserForm from "@/components/admin/CreateUserForm";
 import UserRow from "@/components/admin/UserRow";
+import GroupsPanel from "@/components/admin/GroupsPanel";
 
 export const dynamic = "force-dynamic";
 
@@ -13,14 +14,30 @@ export default async function AdminUsersPage() {
     data: { user: currentUser },
   } = await supabase.auth.getUser();
 
-  const { data: profiles } = await supabase
-    .from("profiles")
-    .select("id, email, role, created_at, invited_by_profile:profiles!invited_by(email)")
-    .order("created_at");
+  const [{ data: profiles }, { data: groups }] = await Promise.all([
+    supabase
+      .from("profiles")
+      .select("id, email, role, created_at, group_id, invited_by_profile:profiles!invited_by(email)")
+      .order("created_at"),
+    supabase.from("groups").select("id, name").order("name"),
+  ]);
+
+  const groupList = groups ?? [];
+  const memberCounts = new Map<string, number>();
+  for (const profile of profiles ?? []) {
+    if (!profile.group_id) continue;
+    memberCounts.set(profile.group_id, (memberCounts.get(profile.group_id) ?? 0) + 1);
+  }
 
   return (
     <div>
       <h2 className="mb-6 font-serif text-xl text-ink">Users</h2>
+
+      <div className="mb-8">
+        <GroupsPanel
+          groups={groupList.map((g) => ({ ...g, memberCount: memberCounts.get(g.id) ?? 0 }))}
+        />
+      </div>
 
       <div className="mb-2 flex items-center justify-between">
         <p className="text-xs font-medium uppercase tracking-[0.15em] text-muted">
@@ -46,6 +63,7 @@ export default async function AdminUsersPage() {
             <tr>
               <th className="px-4 py-3">Email</th>
               <th className="px-4 py-3">Role</th>
+              <th className="px-4 py-3">Group</th>
               <th className="px-4 py-3">Joined</th>
               <th className="px-4 py-3">Invited by</th>
               <th className="px-4 py-3 text-right">Actions</th>
@@ -69,8 +87,10 @@ export default async function AdminUsersPage() {
                     email: profile.email,
                     role: profile.role,
                     created_at: profile.created_at,
+                    group_id: profile.group_id,
                     invited_by_email: invitedByEmail,
                   }}
+                  groups={groupList}
                   isSelf={profile.id === currentUser?.id}
                 />
               );

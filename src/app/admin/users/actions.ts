@@ -231,3 +231,68 @@ export async function removeUser(userId: string) {
   revalidatePath("/admin/users");
   return { success: true };
 }
+
+// --- groups (cohorts, e.g. "HADA class 2026 July") ---------------------
+
+export async function createGroup(formData: FormData) {
+  await requireRole(["super_admin"]);
+
+  const name = String(formData.get("name") ?? "").trim();
+  if (!name) return { error: "Name is required." };
+
+  const supabase = createClient();
+  const { error } = await supabase.from("groups").insert({ name });
+  if (error) {
+    if (/duplicate key/.test(error.message)) {
+      return { error: "A group with that name already exists." };
+    }
+    return { error: error.message };
+  }
+
+  revalidatePath("/admin/users");
+  return { success: true };
+}
+
+export async function renameGroup(groupId: string, formData: FormData) {
+  await requireRole(["super_admin"]);
+
+  const name = String(formData.get("name") ?? "").trim();
+  if (!name) return { error: "Name is required." };
+
+  const supabase = createClient();
+  const { error } = await supabase.from("groups").update({ name }).eq("id", groupId);
+  if (error) {
+    if (/duplicate key/.test(error.message)) {
+      return { error: "A group with that name already exists." };
+    }
+    return { error: error.message };
+  }
+
+  revalidatePath("/admin/users");
+  return { success: true };
+}
+
+/** Deleting a group just clears group_id for its members (ON DELETE SET NULL) — no one is removed. */
+export async function deleteGroup(groupId: string) {
+  await requireRole(["super_admin"]);
+
+  const supabase = createClient();
+  const { error } = await supabase.from("groups").delete().eq("id", groupId);
+  if (error) return { error: error.message };
+
+  revalidatePath("/admin/users");
+  return { success: true };
+}
+
+export async function changeUserGroup(userId: string, formData: FormData) {
+  await requireRole(["super_admin"]);
+
+  const groupId = String(formData.get("group_id") ?? "").trim() || null;
+
+  const supabase = createClient();
+  const { error } = await supabase.from("profiles").update({ group_id: groupId }).eq("id", userId);
+  if (error) return { error: error.message };
+
+  revalidatePath("/admin/users");
+  return { success: true };
+}

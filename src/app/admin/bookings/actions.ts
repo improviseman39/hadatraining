@@ -20,12 +20,12 @@ export async function createBooking(formData: FormData) {
   const { user: caller } = await requireRole(["admin", "super_admin"]);
   const supabase = createClient();
 
-  const userId = String(formData.get("user_id") ?? "");
+  const userIds = formData.getAll("user_ids").map(String).filter(Boolean);
   const sessionId = String(formData.get("session_id") ?? "");
   const startLocal = String(formData.get("start_at") ?? "");
   const endLocal = String(formData.get("end_at") ?? "");
-  if (!userId || !sessionId || !startLocal || !endLocal) {
-    return { error: "User, topic, start, and end are all required." };
+  if (userIds.length === 0 || !sessionId || !startLocal || !endLocal) {
+    return { error: "At least one user, a topic, start, and end are all required." };
   }
 
   const tzOffsetMinutes = readTzOffsetMinutes(formData);
@@ -35,14 +35,19 @@ export async function createBooking(formData: FormData) {
     return { error: "End time must be after start time." };
   }
 
-  const { error } = await supabase.from("bookings").insert({
-    user_id: userId,
-    session_id: sessionId,
-    start_at: startAt.toISOString(),
-    end_at: endAt.toISOString(),
-    notes: String(formData.get("notes") ?? "").trim() || null,
-    created_by: caller.id,
-  });
+  const notes = String(formData.get("notes") ?? "").trim() || null;
+  // One row per selected user — same session/time/notes for everyone,
+  // so a group of trainees can be booked onto one event in a single submit.
+  const { error } = await supabase.from("bookings").insert(
+    userIds.map((userId) => ({
+      user_id: userId,
+      session_id: sessionId,
+      start_at: startAt.toISOString(),
+      end_at: endAt.toISOString(),
+      notes,
+      created_by: caller.id,
+    }))
+  );
 
   if (error) return { error: error.message };
 

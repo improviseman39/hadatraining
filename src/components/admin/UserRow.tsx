@@ -1,7 +1,13 @@
 "use client";
 
 import { useState, useTransition } from "react";
-import { changeRole, removeUser, resetPassword, resetUserMfa } from "@/app/admin/users/actions";
+import {
+  changeRole,
+  changeUserGroup,
+  removeUser,
+  resetPassword,
+  resetUserMfa,
+} from "@/app/admin/users/actions";
 
 type Profile = {
   id: string;
@@ -9,16 +15,20 @@ type Profile = {
   role: "user" | "admin" | "super_admin";
   created_at: string;
   invited_by_email: string | null;
+  group_id: string | null;
 };
 
 export default function UserRow({
   profile,
   isSelf,
+  groups,
 }: {
   profile: Profile;
   isSelf: boolean;
+  groups: { id: string; name: string }[];
 }) {
   const [role, setRole] = useState(profile.role);
+  const [groupId, setGroupId] = useState(profile.group_id ?? "");
   const [error, setError] = useState<string | null>(null);
   const [newPassword, setNewPassword] = useState<string | null>(null);
   const [mfaResetDone, setMfaResetDone] = useState(false);
@@ -32,6 +42,17 @@ export default function UserRow({
       const result = await changeRole(profile.id, formData);
       if (result?.error) setError(result.error);
       else setRole(newRole);
+    });
+  }
+
+  function handleGroupChange(newGroupId: string) {
+    setError(null);
+    startTransition(async () => {
+      const formData = new FormData();
+      formData.set("group_id", newGroupId);
+      const result = await changeUserGroup(profile.id, formData);
+      if (result?.error) setError(result.error);
+      else setGroupId(newGroupId);
     });
   }
 
@@ -89,6 +110,21 @@ export default function UserRow({
           <option value="super_admin">Super Admin</option>
         </select>
         {error && <p className="mt-1 text-xs font-medium text-terracotta">{error}</p>}
+      </td>
+      <td className="px-4 py-3">
+        <select
+          value={groupId}
+          disabled={pending}
+          onChange={(e) => handleGroupChange(e.target.value)}
+          className="rounded-lg border border-ink/15 bg-porcelain px-2 py-1.5 text-sm text-ink focus:border-teal focus:outline-none focus:ring-2 focus:ring-teal/30 disabled:opacity-60"
+        >
+          <option value="">— None —</option>
+          {groups.map((g) => (
+            <option key={g.id} value={g.id}>
+              {g.name}
+            </option>
+          ))}
+        </select>
       </td>
       <td className="px-4 py-3 text-muted">
         {new Date(profile.created_at).toLocaleDateString()}

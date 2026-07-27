@@ -24,6 +24,9 @@ export default async function EditBookingPage({
     supabase.rpc("list_profiles_for_booking"),
     supabase.from("sessions").select("id, title").is("parent_id", null).order("position"),
   ]);
+  const bookedForEmail = (users ?? []).find(
+    (u: { id: string; email: string }) => u.id === booking.user_id
+  )?.email;
 
   return (
     <div>
@@ -35,12 +38,16 @@ export default async function EditBookingPage({
       </Link>
       <h2 className="mb-6 font-serif text-xl text-ink">Edit booking</h2>
       <div className="max-w-xl rounded-2xl border border-ink/10 bg-card p-6 shadow-sm sm:p-7">
+        {bookedForEmail && (
+          <p className="mb-5 text-sm text-muted">
+            Booked for <span className="font-medium text-ink">{bookedForEmail}</span>
+          </p>
+        )}
         <BookingForm
           action={updateBooking.bind(null, booking.id)}
           users={users ?? []}
           sessions={sessions ?? []}
           defaultValues={{
-            user_id: booking.user_id,
             session_id: booking.session_id,
             start_at: booking.start_at,
             end_at: booking.end_at,

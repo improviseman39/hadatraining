@@ -8,8 +8,9 @@ export const dynamic = "force-dynamic";
 export default async function NewBookingPage() {
   const supabase = createClient();
 
-  const [{ data: users }, { data: sessions }] = await Promise.all([
+  const [{ data: users }, { data: groups }, { data: sessions }] = await Promise.all([
     supabase.rpc("list_profiles_for_booking"),
+    supabase.rpc("list_groups_for_booking"),
     // Only top-level sessions are bookable — a sub-topic is organizational
     // content nested inside one, not something a trainee books separately.
     supabase.from("sessions").select("id, title").is("parent_id", null).order("position"),
@@ -28,6 +29,7 @@ export default async function NewBookingPage() {
         <BookingForm
           action={createBooking}
           users={users ?? []}
+          groups={groups ?? []}
           sessions={sessions ?? []}
           showUserField
           submitLabel="Create booking"
