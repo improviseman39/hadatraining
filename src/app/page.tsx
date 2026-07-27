@@ -13,12 +13,21 @@ export const dynamic = "force-dynamic";
 export default async function HomePage() {
   const supabase = createClient();
 
-  const [{ data: sessionRows }, { data: announcementRows }] = await Promise.all([
+  const [{ data: sessionRows }, { data: childParentIds }, { data: announcementRows }] = await Promise.all([
     // Only top-level sessions appear on the curriculum grid — nested
     // sub-topics are discovered by browsing into their parent's own page.
     supabase.from("sessions").select("*").is("parent_id", null).order("position"),
+    // Just enough to count sub-topics per top-level session for the
+    // curriculum-grid badge, without fetching every sub-topic's full row.
+    supabase.from("sessions").select("parent_id").not("parent_id", "is", null),
     supabase.from("announcements").select("*").order("position"),
   ]);
+
+  const subTopicCounts = new Map<string, number>();
+  for (const row of childParentIds ?? []) {
+    if (!row.parent_id) continue;
+    subTopicCounts.set(row.parent_id, (subTopicCounts.get(row.parent_id) ?? 0) + 1);
+  }
 
   const sessions = (sessionRows ?? []).map(mapSession);
   // Once an announcement's last relevant day has passed, drop it from the
@@ -135,7 +144,11 @@ export default async function HomePage() {
                   }`}
                 >
                   {categorySessions.map((session) => (
-                    <SessionCard key={session.slug} session={session} />
+                    <SessionCard
+                      key={session.slug}
+                      session={session}
+                      subTopicCount={subTopicCounts.get(session.id) ?? 0}
+                    />
                   ))}
                 </div>
               </div>

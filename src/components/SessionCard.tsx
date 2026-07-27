@@ -9,7 +9,14 @@ function pad(n: number): string {
   return n.toString().padStart(2, "0");
 }
 
-export default function SessionCard({ session }: { session: Session }) {
+export default function SessionCard({
+  session,
+  subTopicCount = 0,
+}: {
+  session: Session;
+  /** Shown as a small badge so scope is visible while browsing, before clicking in. */
+  subTopicCount?: number;
+}) {
   const { isMember, isReady } = useAuth();
   const locked = !session.isFree && (!isReady || !isMember);
 
@@ -53,6 +60,17 @@ export default function SessionCard({ session }: { session: Session }) {
         <p className="mt-2 flex-1 text-sm leading-relaxed text-muted">
           {session.summary}
         </p>
+
+        {subTopicCount > 0 && (
+          <span className="mt-3 inline-flex w-fit items-center gap-1.5 rounded-full bg-teal/10 py-1 pl-2 pr-2.5 text-xs font-medium text-teal-dark">
+            <svg width="11" height="11" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+              <rect x="3" y="4" width="18" height="4" rx="1" fill="currentColor" />
+              <rect x="3" y="10" width="18" height="4" rx="1" fill="currentColor" />
+              <rect x="3" y="16" width="18" height="4" rx="1" fill="currentColor" />
+            </svg>
+            {subTopicCount} sub-topic{subTopicCount > 1 ? "s" : ""}
+          </span>
+        )}
 
         <div className="mt-6 flex items-center gap-2 text-sm font-medium text-teal">
           <span>{locked ? "Unlock this session" : "View session"}</span>
