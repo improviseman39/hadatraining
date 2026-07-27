@@ -13,6 +13,7 @@ export default function SiteHeader() {
   const { openWidget } = useRequestWidget();
   const isStaff = role === "admin" || role === "super_admin";
   const pathname = usePathname();
+  const onSessionPage = pathname?.startsWith("/sessions/") ?? false;
   const [newRequestCount, setNewRequestCount] = useState(0);
   const [menuOpen, setMenuOpen] = useState(false);
 
@@ -63,16 +64,29 @@ export default function SiteHeader() {
   return (
     <header className="border-b border-ink/10 bg-porcelain/95 backdrop-blur supports-[backdrop-filter]:bg-porcelain/80 sticky top-0 z-40">
       <div className="container-page flex h-16 items-center justify-between sm:h-20">
-        <Link
-          href="/"
-          className="flex items-baseline gap-2 font-serif text-lg font-semibold tracking-tight text-ink sm:text-xl"
-          onClick={() => setMenuOpen(false)}
-        >
-          <span>HADA</span>
-          <span className="hidden text-sm font-normal tracking-wide text-muted sm:inline">
-            Aesthetic Training
-          </span>
-        </Link>
+        <div className="flex items-center gap-3">
+          <Link
+            href="/"
+            className="flex items-baseline gap-2 font-serif text-lg font-semibold tracking-tight text-ink sm:text-xl"
+            onClick={() => setMenuOpen(false)}
+          >
+            <span>HADA</span>
+            <span className="hidden text-sm font-normal tracking-wide text-muted sm:inline">
+              Aesthetic Training
+            </span>
+          </Link>
+
+          {onSessionPage && (
+            <Link
+              href="/#curriculum"
+              aria-label="Back to curriculum"
+              className="flex items-center gap-1.5 rounded-full border border-ink/15 px-2.5 py-1.5 text-xs font-medium text-ink/80 transition-colors hover:border-teal hover:text-teal sm:px-3"
+            >
+              <span aria-hidden="true">&larr;</span>
+              <span className="hidden sm:inline">Back to curriculum</span>
+            </Link>
+          )}
+        </div>
 
         <div className="flex items-center gap-1 sm:gap-2 lg:gap-5">
           {/* Full nav — only once there's room for every item on one line */}
