@@ -6,6 +6,7 @@ import { sendEmail } from "@/lib/resend";
 
 const OTP_LENGTH = 6;
 const OTP_TTL_MINUTES = 10;
+const MAX_OTP_ATTEMPTS = 5;
 
 function generateCode(): string {
   return String(randomInt(0, 10 ** OTP_LENGTH)).padStart(OTP_LENGTH, "0");
@@ -55,27 +56,46 @@ export async function verifyCode(formData: FormData) {
   const code = String(formData.get("code") ?? "").trim();
   if (!/^\d{6}$/.test(code)) return { error: "Enter the 6-digit code." };
 
-  const { data: match } = await supabase
+  // Look up the most recent outstanding code for this user regardless of
+  // what was submitted, so a wrong guess still counts against that code's
+  // attempt budget instead of silently costing nothing.
+  const { data: outstanding } = await supabase
     .from("login_otp_codes")
-    .select("id, expires_at")
+    .select("id, code_hash, expires_at, attempt_count")
     .eq("user_id", user.id)
-    .eq("code_hash", hashCode(code))
     .is("consumed_at", null)
     .order("created_at", { ascending: false })
     .limit(1)
     .maybeSingle();
 
-  if (!match) {
+  if (!outstanding) {
     return { error: "That code isn't right. Check for a more recent email, or send a new one." };
   }
-  if (new Date(match.expires_at) < new Date()) {
+  if (new Date(outstanding.expires_at) < new Date()) {
     return { error: "That code has expired. Send a new one." };
+  }
+  if (outstanding.attempt_count >= MAX_OTP_ATTEMPTS) {
+    return { error: "Too many incorrect attempts. Send a new code." };
+  }
+
+  if (outstanding.code_hash !== hashCode(code)) {
+    await supabase
+      .from("login_otp_codes")
+      .update({ attempt_count: outstanding.attempt_count + 1 })
+      .eq("id", outstanding.id);
+    const remaining = MAX_OTP_ATTEMPTS - outstanding.attempt_count - 1;
+    return {
+      error:
+        remaining > 0
+          ? "That code isn't right. Check for a more recent email, or send a new one."
+          : "Too many incorrect attempts. Send a new code.",
+    };
   }
 
   await supabase
     .from("login_otp_codes")
     .update({ consumed_at: new Date().toISOString() })
-    .eq("id", match.id);
+    .eq("id", outstanding.id);
   const { error } = await supabase
     .from("profiles")
     .update({ email_verified_at: new Date().toISOString() })

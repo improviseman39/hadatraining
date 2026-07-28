@@ -13,7 +13,7 @@ const ROLES = ["user", "admin", "super_admin"] as const;
 type RoleValue = (typeof ROLES)[number];
 
 // Matches [auth] minimum_password_length in supabase/config.toml.
-const MIN_PASSWORD_LENGTH = 6;
+const MIN_PASSWORD_LENGTH = 8;
 
 function generatePassword(length = 16) {
   return randomBytes(length).toString("base64url").slice(0, length);
