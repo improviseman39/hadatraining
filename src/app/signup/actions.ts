@@ -58,7 +58,7 @@ export async function signUp(formData: FormData) {
   // onboarding step needed, unlike admin-created accounts with a temporary
   // one. Still need to sign them in: creating the account server-side via
   // the admin API doesn't establish a session for their own browser.
-  const supabase = createClient();
+  const supabase = await createClient();
   const { data: signInData, error: signInError } = await supabase.auth.signInWithPassword({
     email,
     password,

@@ -6,12 +6,13 @@ import { buildParentOptions } from "@/lib/sessionTree";
 
 export const dynamic = "force-dynamic";
 
-export default async function NewSessionPage({
-  searchParams,
-}: {
-  searchParams: { parent?: string };
-}) {
-  const supabase = createClient();
+export default async function NewSessionPage(
+  props: {
+    searchParams: Promise<{ parent?: string }>;
+  }
+) {
+  const searchParams = await props.searchParams;
+  const supabase = await createClient();
   const { data: sessions } = await supabase.from("sessions").select("id, title, parent_id");
   const parentOptions = buildParentOptions(sessions ?? []);
 
