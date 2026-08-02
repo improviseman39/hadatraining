@@ -11,7 +11,7 @@ import HeroLatestPreview from "@/components/HeroLatestPreview";
 export const dynamic = "force-dynamic";
 
 export default async function HomePage() {
-  const supabase = createClient();
+  const supabase = await createClient();
 
   const [{ data: sessionRows }, { data: childParentIds }, { data: announcementRows }] = await Promise.all([
     // Only top-level sessions appear on the curriculum grid — nested

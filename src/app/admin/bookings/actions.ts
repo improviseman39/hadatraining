@@ -18,7 +18,7 @@ function readTzOffsetMinutes(formData: FormData): number {
 
 export async function createBooking(formData: FormData) {
   const { user: caller } = await requireRole(["admin", "super_admin"]);
-  const supabase = createClient();
+  const supabase = await createClient();
 
   const userIds = formData.getAll("user_ids").map(String).filter(Boolean);
   const sessionId = String(formData.get("session_id") ?? "");
@@ -57,7 +57,7 @@ export async function createBooking(formData: FormData) {
 
 export async function updateBooking(id: string, formData: FormData) {
   const { user: caller } = await requireRole(["admin", "super_admin"]);
-  const supabase = createClient();
+  const supabase = await createClient();
 
   const sessionId = String(formData.get("session_id") ?? "");
   const startLocal = String(formData.get("start_at") ?? "");
@@ -99,7 +99,7 @@ export async function updateBooking(id: string, formData: FormData) {
 
 export async function deleteBooking(id: string) {
   await requireRole(["admin", "super_admin"]);
-  const supabase = createClient();
+  const supabase = await createClient();
   await supabase.from("bookings").delete().eq("id", id);
   revalidateBookingPaths();
 }
