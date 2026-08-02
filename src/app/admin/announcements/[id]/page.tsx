@@ -6,13 +6,12 @@ import AnnouncementForm from "@/components/admin/AnnouncementForm";
 
 export const dynamic = "force-dynamic";
 
-export default async function EditAnnouncementPage(
-  props: {
-    params: Promise<{ id: string }>;
-  }
-) {
-  const params = await props.params;
-  const supabase = await createClient();
+export default async function EditAnnouncementPage({
+  params,
+}: {
+  params: { id: string };
+}) {
+  const supabase = createClient();
   const { data: announcement, error } = await supabase
     .from("announcements")
     .select("*")

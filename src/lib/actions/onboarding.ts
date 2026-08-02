@@ -25,7 +25,7 @@ async function sendOtpEmail(email: string, code: string): Promise<{ error?: stri
 }
 
 export async function sendVerificationCode() {
-  const supabase = await createClient();
+  const supabase = createClient();
   const {
     data: { user },
   } = await supabase.auth.getUser();
@@ -47,7 +47,7 @@ export async function sendVerificationCode() {
 }
 
 export async function verifyCode(formData: FormData) {
-  const supabase = await createClient();
+  const supabase = createClient();
   const {
     data: { user },
   } = await supabase.auth.getUser();
@@ -106,7 +106,7 @@ export async function verifyCode(formData: FormData) {
 }
 
 export async function completePasswordChange() {
-  const supabase = await createClient();
+  const supabase = createClient();
   const {
     data: { user },
   } = await supabase.auth.getUser();

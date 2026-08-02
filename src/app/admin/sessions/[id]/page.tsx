@@ -9,13 +9,12 @@ import { buildParentOptions } from "@/lib/sessionTree";
 
 export const dynamic = "force-dynamic";
 
-export default async function EditSessionPage(
-  props: {
-    params: Promise<{ id: string }>;
-  }
-) {
-  const params = await props.params;
-  const supabase = await createClient();
+export default async function EditSessionPage({
+  params,
+}: {
+  params: { id: string };
+}) {
+  const supabase = createClient();
 
   const { data: session, error } = await supabase
     .from("sessions")

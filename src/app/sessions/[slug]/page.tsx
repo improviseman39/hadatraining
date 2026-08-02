@@ -15,7 +15,7 @@ type Crumb = { slug: string; title: string };
 /** Walks parent_id upward to build a breadcrumb — arbitrary depth, so this
  * loops rather than assuming a fixed number of levels. */
 async function buildBreadcrumb(
-  supabase: Awaited<ReturnType<typeof createClient>>,
+  supabase: ReturnType<typeof createClient>,
   parentId: string | null
 ): Promise<Crumb[]> {
   const crumbs: Crumb[] = [];
@@ -61,9 +61,8 @@ function pad(n: number): string {
   return n.toString().padStart(2, "0");
 }
 
-export async function generateMetadata(props: { params: Promise<{ slug: string }> }) {
-  const params = await props.params;
-  const supabase = await createClient();
+export async function generateMetadata({ params }: { params: { slug: string } }) {
+  const supabase = createClient();
   const { data: session } = await supabase
     .from("sessions")
     .select("title, summary")
@@ -76,13 +75,12 @@ export async function generateMetadata(props: { params: Promise<{ slug: string }
   };
 }
 
-export default async function SessionPage(
-  props: {
-    params: Promise<{ slug: string }>;
-  }
-) {
-  const params = await props.params;
-  const supabase = await createClient();
+export default async function SessionPage({
+  params,
+}: {
+  params: { slug: string };
+}) {
+  const supabase = createClient();
 
   const { data: sessionRow, error } = await supabase
     .from("sessions")

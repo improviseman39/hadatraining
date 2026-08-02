@@ -6,7 +6,7 @@ import BookingForm from "@/components/admin/BookingForm";
 export const dynamic = "force-dynamic";
 
 export default async function NewBookingPage() {
-  const supabase = await createClient();
+  const supabase = createClient();
 
   const [{ data: users }, { data: groups }, { data: sessions }] = await Promise.all([
     supabase.rpc("list_profiles_for_booking"),

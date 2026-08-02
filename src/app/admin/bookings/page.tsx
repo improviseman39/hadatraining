@@ -7,7 +7,7 @@ import ActionButton from "@/components/admin/ActionButton";
 export const dynamic = "force-dynamic";
 
 export default async function AdminBookingsPage() {
-  const supabase = await createClient();
+  const supabase = createClient();
 
   const [{ data: bookings }, { data: profiles }] = await Promise.all([
     supabase

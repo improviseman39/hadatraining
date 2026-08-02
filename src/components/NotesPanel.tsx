@@ -8,7 +8,7 @@ export default function NotesPanel({ slug }: { slug: string }) {
   const storageKey = `hada_notes_${slug}`;
   const [notes, setNotes] = useState("");
   const [status, setStatus] = useState<"idle" | "saved">("idle");
-  const saveTimeout = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
+  const saveTimeout = useRef<ReturnType<typeof setTimeout>>();
   const hydrated = useRef(false);
 
   useEffect(() => {

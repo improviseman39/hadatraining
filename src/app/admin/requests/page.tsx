@@ -15,7 +15,7 @@ type RequestMessage = {
 };
 
 export default async function AdminRequestsPage() {
-  const supabase = await createClient();
+  const supabase = createClient();
 
   const [{ data: requests }, { data: profiles }, { data: messages }] = await Promise.all([
     supabase

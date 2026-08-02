@@ -58,7 +58,7 @@ function BookingCard({ booking, muted }: { booking: BookingRow; muted?: boolean 
 
 export default async function TimetablePage() {
   const { user } = await requireRole(["user", "admin", "super_admin"]);
-  const supabase = await createClient();
+  const supabase = createClient();
 
   const { data: bookings } = await supabase
     .from("bookings")

@@ -6,7 +6,7 @@ import { createClient } from "@/lib/supabase/server";
 const MAX_MESSAGE_LENGTH = 2000;
 
 export async function submitRequest(formData: FormData) {
-  const supabase = await createClient();
+  const supabase = createClient();
   const {
     data: { user },
   } = await supabase.auth.getUser();
@@ -36,7 +36,7 @@ export async function submitRequest(formData: FormData) {
  * thread.
  */
 export async function sendRequestMessage(requestId: string, formData: FormData) {
-  const supabase = await createClient();
+  const supabase = createClient();
   const {
     data: { user },
   } = await supabase.auth.getUser();

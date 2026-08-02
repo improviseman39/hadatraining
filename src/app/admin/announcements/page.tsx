@@ -6,7 +6,7 @@ import ActionButton from "@/components/admin/ActionButton";
 export const dynamic = "force-dynamic";
 
 export default async function AdminAnnouncementsPage() {
-  const supabase = await createClient();
+  const supabase = createClient();
   const { data: announcements } = await supabase
     .from("announcements")
     .select("id, title, category, date, end_date, always_visible, position")

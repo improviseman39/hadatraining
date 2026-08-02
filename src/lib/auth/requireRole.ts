@@ -9,7 +9,7 @@ import type { Role } from "@/context/AuthContext";
  * only protects rendering, not the action, which is reachable on its own.
  */
 export async function requireRole(allowed: Role[]) {
-  const supabase = await createClient();
+  const supabase = createClient();
   const {
     data: { user },
   } = await supabase.auth.getUser();

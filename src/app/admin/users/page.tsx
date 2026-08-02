@@ -8,7 +8,7 @@ import GroupsPanel from "@/components/admin/GroupsPanel";
 export const dynamic = "force-dynamic";
 
 export default async function AdminUsersPage() {
-  const supabase = await createClient();
+  const supabase = createClient();
 
   const {
     data: { user: currentUser },

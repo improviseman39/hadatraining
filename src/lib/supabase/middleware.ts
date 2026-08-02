@@ -26,8 +26,7 @@ function resolveOnboardingStep(status: OnboardingStatus): string | null {
 }
 
 /**
- * Refreshes the Supabase session on every request. Runs in proxy.ts (the
- * Next.js "proxy" file convention, formerly "middleware.ts").
+ * Refreshes the Supabase session on every request. Runs in middleware.ts.
  * Uses getUser() (not getSession()) so the token is revalidated against
  * the Auth server rather than trusted from an unverified cookie. Also
  * enforces the mandatory first-login chain (verify email, set a real

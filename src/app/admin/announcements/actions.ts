@@ -22,7 +22,7 @@ function revalidatePublicPages() {
  * manual reorder over an unrelated edit.
  */
 async function insertAtDateSortedPosition(
-  supabase: Awaited<ReturnType<typeof createClient>>,
+  supabase: ReturnType<typeof createClient>,
   newDate: string
 ): Promise<number> {
   const { data: existing } = await supabase
@@ -31,7 +31,7 @@ async function insertAtDateSortedPosition(
     .order("position");
   const rows = existing ?? [];
 
-  const insertBeforeIndex = rows.findIndex((row: { date: string }) => row.date > newDate);
+  const insertBeforeIndex = rows.findIndex((row) => row.date > newDate);
   if (insertBeforeIndex === -1) {
     return (rows.at(-1)?.position ?? 0) + 1;
   }
@@ -49,7 +49,7 @@ async function insertAtDateSortedPosition(
 
 export async function createAnnouncement(formData: FormData) {
   await requireRole(["admin", "super_admin"]);
-  const supabase = await createClient();
+  const supabase = createClient();
 
   const category = String(formData.get("category") ?? "");
   if (!CATEGORIES.includes(category as (typeof CATEGORIES)[number])) {
@@ -91,7 +91,7 @@ export async function createAnnouncement(formData: FormData) {
 
 export async function updateAnnouncement(id: string, formData: FormData) {
   await requireRole(["admin", "super_admin"]);
-  const supabase = await createClient();
+  const supabase = createClient();
 
   const category = String(formData.get("category") ?? "");
   if (!CATEGORIES.includes(category as (typeof CATEGORIES)[number])) {
@@ -140,14 +140,14 @@ export async function updateAnnouncement(id: string, formData: FormData) {
 
 export async function deleteAnnouncement(id: string) {
   await requireRole(["admin", "super_admin"]);
-  const supabase = await createClient();
+  const supabase = createClient();
   await supabase.from("announcements").delete().eq("id", id);
   revalidatePublicPages();
 }
 
 export async function moveAnnouncement(id: string, direction: "up" | "down") {
   await requireRole(["admin", "super_admin"]);
-  const supabase = await createClient();
+  const supabase = createClient();
 
   const { data: current } = await supabase
     .from("announcements")
