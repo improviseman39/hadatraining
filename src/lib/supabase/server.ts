@@ -7,11 +7,14 @@ import { createServerClient } from "@supabase/ssr";
  * across requests.
  *
  * Server Components cannot write cookies (Next.js throws), so `setAll` is a
- * safe no-op there. The actual session refresh happens in `middleware.ts`,
+ * safe no-op there. The actual session refresh happens in `proxy.ts`,
  * which is the only place allowed to write the refreshed cookies back.
+ *
+ * `cookies()` is async as of Next.js 15+, so this must be awaited by every
+ * caller.
  */
-export function createClient() {
-  const cookieStore = cookies();
+export async function createClient() {
+  const cookieStore = await cookies();
 
   return createServerClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -28,7 +31,7 @@ export function createClient() {
             );
           } catch {
             // Called from a Server Component — safe to ignore since
-            // middleware.ts refreshes the session on every request.
+            // proxy.ts refreshes the session on every request.
           }
         },
       },

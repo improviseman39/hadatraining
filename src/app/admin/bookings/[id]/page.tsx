@@ -6,12 +6,13 @@ import BookingForm from "@/components/admin/BookingForm";
 
 export const dynamic = "force-dynamic";
 
-export default async function EditBookingPage({
-  params,
-}: {
-  params: { id: string };
-}) {
-  const supabase = createClient();
+export default async function EditBookingPage(
+  props: {
+    params: Promise<{ id: string }>;
+  }
+) {
+  const params = await props.params;
+  const supabase = await createClient();
 
   const { data: booking, error } = await supabase
     .from("bookings")

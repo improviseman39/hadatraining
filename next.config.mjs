@@ -35,6 +35,15 @@ const securityHeaders = [
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   poweredByHeader: false,
+  // Pins the workspace root to this project's own directory rather than
+  // letting Next.js infer it from the nearest lockfile up the tree — that
+  // inference gets confused when this app is checked out inside another
+  // git repo's worktree (each worktree carries its own package-lock.json
+  // alongside the parent repo's), and an incorrect root is a build-time
+  // ambiguity worth pinning down for good regardless of dev setup.
+  turbopack: {
+    root: import.meta.dirname,
+  },
   async headers() {
     return [
       {

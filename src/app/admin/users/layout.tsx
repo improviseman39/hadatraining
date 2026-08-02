@@ -9,7 +9,7 @@ export default async function UsersLayout({
   // Stricter than the parent /admin layout: super_admin only. An admin
   // wandering here gets bounced back to the area they DO have access to,
   // not to the public homepage.
-  const supabase = createClient();
+  const supabase = await createClient();
   const {
     data: { user },
   } = await supabase.auth.getUser();

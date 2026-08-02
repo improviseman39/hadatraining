@@ -47,7 +47,7 @@ function flattenTree(sessions: SessionRow[]): FlatRow[] {
 }
 
 export default async function AdminSessionsPage() {
-  const supabase = createClient();
+  const supabase = await createClient();
   const [{ data: sessions }, { data: bookingRows }] = await Promise.all([
     supabase
       .from("sessions")
