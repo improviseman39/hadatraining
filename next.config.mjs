@@ -8,7 +8,22 @@ const localSupabase = isProd ? "" : " http://127.0.0.1:*";
 
 // 'unsafe-eval' is needed only for Next dev mode's Fast Refresh runtime
 // (webpack HMR eval()) — the production build never evals script.
-const scriptSrc = isProd ? "script-src 'self'" : "script-src 'self' 'unsafe-eval'";
+//
+// 'unsafe-inline' on script-src is required in production too: the App
+// Router injects small inline <script> tags at runtime to progressively
+// reveal streamed Suspense boundaries (React's "$RC"-style hydration
+// wiring) on every single page, not just ones that look async. Without
+// it, the browser silently blocks those scripts per CSP with no visible
+// error to the user — every click site-wide just does nothing forever,
+// looking exactly like the page "freezing" (a component stuck on its
+// Suspense fallback, or a form silently never running its onSubmit).
+// The safe fix is a per-request nonce instead of a blanket allowance;
+// that requires wiring a nonce through middleware into headers() (which
+// this static config can't do) — worth doing as a follow-up, but
+// 'unsafe-inline' unblocks the whole site immediately in the meantime.
+const scriptSrc = isProd
+  ? "script-src 'self' 'unsafe-inline'"
+  : "script-src 'self' 'unsafe-eval' 'unsafe-inline'";
 
 const CSP = [
   "default-src 'self'",
