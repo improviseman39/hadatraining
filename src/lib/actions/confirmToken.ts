@@ -18,7 +18,7 @@ export async function confirmToken(
   tokenHash: string,
   type: VerifiableType
 ): Promise<{ error: string } | { success: true }> {
-  const supabase = createClient();
+  const supabase = await createClient();
   const {
     data: { user },
     error,

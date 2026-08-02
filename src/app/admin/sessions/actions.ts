@@ -17,7 +17,7 @@ function revalidatePublicPages(slug?: string) {
 
 export async function createSession(formData: FormData) {
   await requireRole(["admin", "super_admin"]);
-  const supabase = createClient();
+  const supabase = await createClient();
 
   const slug = String(formData.get("slug") ?? "").trim();
   const parentId = String(formData.get("parent_id") ?? "").trim() || null;
@@ -82,7 +82,7 @@ export async function createSession(formData: FormData) {
 
 export async function updateSession(id: string, formData: FormData) {
   await requireRole(["admin", "super_admin"]);
-  const supabase = createClient();
+  const supabase = await createClient();
 
   const category = String(formData.get("category") ?? "");
   if (!CATEGORIES.includes(category as (typeof CATEGORIES)[number])) {
@@ -138,7 +138,7 @@ export async function updateSession(id: string, formData: FormData) {
 
 export async function deleteSession(id: string) {
   await requireRole(["admin", "super_admin"]);
-  const supabase = createClient();
+  const supabase = await createClient();
 
   const { data: existing } = await supabase
     .from("sessions")
@@ -153,7 +153,7 @@ export async function deleteSession(id: string) {
 
 export async function moveSession(id: string, direction: "up" | "down") {
   await requireRole(["admin", "super_admin"]);
-  const supabase = createClient();
+  const supabase = await createClient();
   await supabase.rpc("move_session", { p_session_id: id, p_direction: direction });
   revalidatePublicPages();
 }
@@ -162,7 +162,7 @@ export async function moveSession(id: string, direction: "up" | "down") {
 
 export async function addBlock(sessionId: string, formData: FormData) {
   await requireRole(["admin", "super_admin"]);
-  const supabase = createClient();
+  const supabase = await createClient();
 
   const type = String(formData.get("type") ?? "");
   if (!["video", "pdf", "text"].includes(type)) {
@@ -216,7 +216,7 @@ export async function addBlock(sessionId: string, formData: FormData) {
 
 export async function updateBlock(blockId: string, formData: FormData) {
   await requireRole(["admin", "super_admin"]);
-  const supabase = createClient();
+  const supabase = await createClient();
 
   const { data: block } = await supabase
     .from("content_blocks")
@@ -262,7 +262,7 @@ export async function updateBlock(blockId: string, formData: FormData) {
 
 export async function deleteBlock(blockId: string) {
   await requireRole(["admin", "super_admin"]);
-  const supabase = createClient();
+  const supabase = await createClient();
 
   const { data: block } = await supabase
     .from("content_blocks")
@@ -289,7 +289,7 @@ export async function moveBlock(
   direction: "up" | "down"
 ) {
   await requireRole(["admin", "super_admin"]);
-  const supabase = createClient();
+  const supabase = await createClient();
   await supabase.rpc("move_content_block", { p_block_id: blockId, p_direction: direction });
 
   const { data: session } = await supabase
@@ -306,7 +306,7 @@ export async function getPdfPreviewUrl(
   storagePath: string
 ): Promise<{ url: string; error?: undefined } | { error: string; url?: undefined }> {
   await requireRole(["admin", "super_admin"]);
-  const supabase = createClient();
+  const supabase = await createClient();
   const { data, error } = await supabase.storage
     .from(PDF_BUCKET)
     .createSignedUrl(storagePath, 300);

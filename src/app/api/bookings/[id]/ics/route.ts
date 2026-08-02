@@ -9,11 +9,9 @@ import { generateBookingIcs } from "@/lib/ics";
  * returns no row — treated as 404, not a 403, so a booking ID's existence
  * isn't leaked to a non-owner.
  */
-export async function GET(
-  request: Request,
-  { params }: { params: { id: string } }
-) {
-  const supabase = createClient();
+export async function GET(request: Request, props: { params: Promise<{ id: string }> }) {
+  const params = await props.params;
+  const supabase = await createClient();
   const {
     data: { user },
   } = await supabase.auth.getUser();

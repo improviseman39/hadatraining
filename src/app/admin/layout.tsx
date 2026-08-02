@@ -9,7 +9,7 @@ export default async function AdminLayout({
 }) {
   const { role } = await requireRole(["admin", "super_admin"]);
 
-  const supabase = createClient();
+  const supabase = await createClient();
   const { count: newRequestCount } = await supabase
     .from("requests")
     .select("id", { count: "exact", head: true })

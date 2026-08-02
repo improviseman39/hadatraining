@@ -135,7 +135,7 @@ export async function resetPassword(userId: string) {
 
   // A reset password is a new temporary one — same as initial account
   // creation, it must be replaced before the account is usable again.
-  const supabase = createClient();
+  const supabase = await createClient();
   await supabase.from("profiles").update({ must_change_password: true }).eq("id", userId);
 
   return { success: true, password };
@@ -163,7 +163,7 @@ export async function resetUserMfa(userId: string) {
 }
 
 async function superAdminCount(excluding?: string) {
-  const supabase = createClient();
+  const supabase = await createClient();
   const query = supabase
     .from("profiles")
     .select("id", { count: "exact", head: true })
@@ -182,7 +182,7 @@ export async function changeRole(userId: string, formData: FormData) {
     return { error: "You can't change your own role away from super_admin." };
   }
 
-  const supabase = createClient();
+  const supabase = await createClient();
   const { data: target } = await supabase
     .from("profiles")
     .select("role")
@@ -210,7 +210,7 @@ export async function removeUser(userId: string) {
     return { error: "You can't remove your own account." };
   }
 
-  const supabase = createClient();
+  const supabase = await createClient();
   const { data: target } = await supabase
     .from("profiles")
     .select("role")
@@ -240,7 +240,7 @@ export async function createGroup(formData: FormData) {
   const name = String(formData.get("name") ?? "").trim();
   if (!name) return { error: "Name is required." };
 
-  const supabase = createClient();
+  const supabase = await createClient();
   const { error } = await supabase.from("groups").insert({ name });
   if (error) {
     if (/duplicate key/.test(error.message)) {
@@ -259,7 +259,7 @@ export async function renameGroup(groupId: string, formData: FormData) {
   const name = String(formData.get("name") ?? "").trim();
   if (!name) return { error: "Name is required." };
 
-  const supabase = createClient();
+  const supabase = await createClient();
   const { error } = await supabase.from("groups").update({ name }).eq("id", groupId);
   if (error) {
     if (/duplicate key/.test(error.message)) {
@@ -276,7 +276,7 @@ export async function renameGroup(groupId: string, formData: FormData) {
 export async function deleteGroup(groupId: string) {
   await requireRole(["super_admin"]);
 
-  const supabase = createClient();
+  const supabase = await createClient();
   const { error } = await supabase.from("groups").delete().eq("id", groupId);
   if (error) return { error: error.message };
 
@@ -289,7 +289,7 @@ export async function changeUserGroup(userId: string, formData: FormData) {
 
   const groupId = String(formData.get("group_id") ?? "").trim() || null;
 
-  const supabase = createClient();
+  const supabase = await createClient();
   const { error } = await supabase.from("profiles").update({ group_id: groupId }).eq("id", userId);
   if (error) return { error: error.message };
 
