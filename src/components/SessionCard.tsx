@@ -12,10 +12,13 @@ function pad(n: number): string {
 export default function SessionCard({
   session,
   subTopicCount = 0,
+  completionPercent,
 }: {
   session: Session;
   /** Shown as a small badge so scope is visible while browsing, before clicking in. */
   subTopicCount?: number;
+  /** Undefined for logged-out visitors / sessions with no progress yet - the badge only shows once there's something to report. */
+  completionPercent?: number;
 }) {
   const { isMember, isReady } = useAuth();
   const locked = !session.isFree && (!isReady || !isMember);
@@ -61,15 +64,33 @@ export default function SessionCard({
           {session.summary}
         </p>
 
-        {subTopicCount > 0 && (
-          <span className="mt-3 inline-flex w-fit items-center gap-1.5 rounded-full bg-teal/10 py-1 pl-2 pr-2.5 text-xs font-medium text-teal-dark">
-            <svg width="11" height="11" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
-              <rect x="3" y="4" width="18" height="4" rx="1" fill="currentColor" />
-              <rect x="3" y="10" width="18" height="4" rx="1" fill="currentColor" />
-              <rect x="3" y="16" width="18" height="4" rx="1" fill="currentColor" />
-            </svg>
-            {subTopicCount} sub-topic{subTopicCount > 1 ? "s" : ""}
-          </span>
+        {(subTopicCount > 0 || !!completionPercent) && (
+          <div className="mt-3 flex flex-wrap items-center gap-2">
+            {subTopicCount > 0 && (
+              <span className="inline-flex w-fit items-center gap-1.5 rounded-full bg-teal/10 py-1 pl-2 pr-2.5 text-xs font-medium text-teal-dark">
+                <svg width="11" height="11" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+                  <rect x="3" y="4" width="18" height="4" rx="1" fill="currentColor" />
+                  <rect x="3" y="10" width="18" height="4" rx="1" fill="currentColor" />
+                  <rect x="3" y="16" width="18" height="4" rx="1" fill="currentColor" />
+                </svg>
+                {subTopicCount} sub-topic{subTopicCount > 1 ? "s" : ""}
+              </span>
+            )}
+            {!!completionPercent && (
+              <span className="inline-flex w-fit items-center gap-1.5 rounded-full bg-teal/10 py-1 pl-2 pr-2.5 text-xs font-medium text-teal-dark">
+                <svg width="11" height="11" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+                  <circle cx="12" cy="12" r="9" stroke="currentColor" strokeWidth="2" opacity="0.35" />
+                  <path
+                    d="M12 3a9 9 0 019 9"
+                    stroke="currentColor"
+                    strokeWidth="2"
+                    strokeLinecap="round"
+                  />
+                </svg>
+                {completionPercent}% complete
+              </span>
+            )}
+          </div>
         )}
 
         <div className="mt-6 flex items-center gap-2 text-sm font-medium text-teal">

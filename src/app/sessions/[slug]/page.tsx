@@ -104,10 +104,11 @@ export default async function SessionPage(
   } = await supabase.auth.getUser();
   const progressByBlockId: Record<string, BlockProgress> = {};
   let resumeBlockId: string | null = null;
+  let sessionCompletionPercent: number | undefined;
   if (user) {
     const { data: progressRows } = await supabase
       .from("content_block_progress")
-      .select("content_block_id, last_position_seconds, viewed, last_active_at")
+      .select("content_block_id, last_position_seconds, max_position_seconds, duration_seconds, viewed, last_active_at")
       .eq("session_id", session.id);
     for (const row of progressRows ?? []) {
       progressByBlockId[row.content_block_id] = {
@@ -122,6 +123,24 @@ export default async function SessionPage(
       (progressRows ?? []).slice().sort(
         (a, b) => new Date(b.last_active_at).getTime() - new Date(a.last_active_at).getTime()
       )[0]?.content_block_id ?? null;
+
+    // Same formula as the my_block_progress/my_session_progress views
+    // (0029_progress_views.sql), computed inline here since the raw rows
+    // for this one session are already in hand - no need for a second
+    // round-trip to the view for a single session's worth of blocks.
+    const progressRowByBlockId = new Map((progressRows ?? []).map((r) => [r.content_block_id, r]));
+    const blockPercents = session.blocks.map((block) => {
+      const row = progressRowByBlockId.get(block.id);
+      if (block.type === "video") {
+        const duration = row?.duration_seconds ?? 0;
+        if (!row || !duration) return 0;
+        return Math.min(100, Math.floor((row.max_position_seconds / duration) * 100));
+      }
+      return row?.viewed ? 100 : 0;
+    });
+    sessionCompletionPercent = blockPercents.length
+      ? Math.round(blockPercents.reduce((sum, p) => sum + p, 0) / blockPercents.length)
+      : undefined;
   }
 
   // Prev/next only makes sense for top-level sessions — a sub-topic is
@@ -218,6 +237,11 @@ export default async function SessionPage(
             {!session.isFree && (
               <span className="flex items-center gap-1.5 rounded-full bg-terracotta/90 px-3 py-1 text-xs font-medium text-porcelain">
                 Members only
+              </span>
+            )}
+            {!!sessionCompletionPercent && (
+              <span className="flex items-center gap-1.5 rounded-full bg-teal/90 px-3 py-1 text-xs font-medium text-porcelain">
+                {sessionCompletionPercent}% complete
               </span>
             )}
           </div>

@@ -55,14 +55,18 @@ export default async function HomePage() {
     blockId: string;
     blockTitle: string | null;
   } | null = null;
+  const completionBySessionId = new Map<string, number>();
   if (user) {
-    const { data: progressRow } = await supabase
-      .from("content_block_progress")
-      .select("content_block_id, sessions(*), content_blocks(title)")
-      .eq("user_id", user.id)
-      .order("last_active_at", { ascending: false })
-      .limit(1)
-      .maybeSingle();
+    const [{ data: progressRow }, { data: sessionProgressRows }] = await Promise.all([
+      supabase
+        .from("content_block_progress")
+        .select("content_block_id, sessions(*), content_blocks(title)")
+        .eq("user_id", user.id)
+        .order("last_active_at", { ascending: false })
+        .limit(1)
+        .maybeSingle(),
+      supabase.from("my_session_progress").select("session_id, percent_complete"),
+    ]);
     // Postgrest infers embedded to-one relations as arrays without a
     // generated Database type (this project doesn't have one) - normalize
     // either shape, same pattern as BookingCard's sessionInfo().
@@ -83,6 +87,9 @@ export default async function HomePage() {
         blockId: progressRow.content_block_id,
         blockTitle: progressBlock?.title ?? null,
       };
+    }
+    for (const row of sessionProgressRows ?? []) {
+      completionBySessionId.set(row.session_id, row.percent_complete);
     }
   }
 
@@ -195,6 +202,7 @@ export default async function HomePage() {
                       key={session.slug}
                       session={session}
                       subTopicCount={subTopicCounts.get(session.id) ?? 0}
+                      completionPercent={completionBySessionId.get(session.id)}
                     />
                   ))}
                 </div>

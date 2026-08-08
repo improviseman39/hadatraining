@@ -15,6 +15,7 @@ export default function SiteHeader() {
   const pathname = usePathname();
   const onSessionPage = pathname?.startsWith("/sessions/") ?? false;
   const [newRequestCount, setNewRequestCount] = useState(0);
+  const [overallPercent, setOverallPercent] = useState<number | null>(null);
   const [menuOpen, setMenuOpen] = useState(false);
 
   useEffect(() => {
@@ -35,6 +36,32 @@ export default function SiteHeader() {
       cancelled = true;
     };
   }, [isStaff, pathname]);
+
+  useEffect(() => {
+    if (!isMember) {
+      setOverallPercent(null);
+      return;
+    }
+    let cancelled = false;
+    const supabase = createClient();
+    supabase
+      .from("my_session_progress")
+      .select("percent_complete")
+      .then(({ data }) => {
+        if (cancelled) return;
+        if (!data || data.length === 0) {
+          setOverallPercent(null);
+          return;
+        }
+        const average = Math.round(
+          data.reduce((sum, row) => sum + row.percent_complete, 0) / data.length
+        );
+        setOverallPercent(average);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [isMember, pathname]);
 
   // Menu content depends on auth state (isReady flips after mount), so close
   // any open mobile menu whenever the route or auth state changes underneath it.
@@ -145,7 +172,7 @@ export default function SiteHeader() {
                 )}
                 <span className="flex items-center gap-1.5 rounded-full bg-teal/10 px-3 py-1.5 text-xs font-medium text-teal-dark">
                   <span aria-hidden="true" className="h-1.5 w-1.5 rounded-full bg-teal" />
-                  Member
+                  Member{overallPercent !== null ? ` · ${overallPercent}% complete` : ""}
                 </span>
                 <button
                   type="button"
@@ -257,7 +284,7 @@ export default function SiteHeader() {
                 <div className="mt-2 flex items-center justify-between border-t border-ink/10 pt-3">
                   <span className="flex items-center gap-1.5 rounded-full bg-teal/10 px-3 py-1.5 text-xs font-medium text-teal-dark">
                     <span aria-hidden="true" className="h-1.5 w-1.5 rounded-full bg-teal" />
-                    Member
+                    Member{overallPercent !== null ? ` · ${overallPercent}% complete` : ""}
                   </span>
                   <button
                     type="button"
