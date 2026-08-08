@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState, useTransition } from "react";
+import Link from "next/link";
 import { useAuth } from "@/context/AuthContext";
 import { useRequestWidget } from "@/context/RequestWidgetContext";
 import { createClient } from "@/lib/supabase/client";
@@ -140,6 +141,14 @@ export default function RequestWidget() {
               </svg>
             </button>
           </div>
+
+          <Link
+            href="/qa"
+            onClick={closeWidget}
+            className="mt-1 text-xs font-medium text-teal underline-offset-2 hover:underline"
+          >
+            Check our Q&amp;A first &rarr;
+          </Link>
 
           {mode === "loading" && (
             <p className="mt-4 text-sm text-muted">Loading…</p>

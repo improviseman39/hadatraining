@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import LocalDateTime from "@/components/LocalDateTime";
 import ActionButton from "@/components/admin/ActionButton";
@@ -54,6 +55,10 @@ export default async function AdminRequestsPage() {
 
         {(requests ?? []).map((request) => {
           const isNew = request.status === "new";
+          const staffReplies = (messagesByRequestId.get(request.id) ?? []).filter(
+            (m) => m.sender_id !== request.user_id
+          );
+          const latestStaffReply = staffReplies.at(-1)?.body ?? "";
           return (
             <div
               key={request.id}
@@ -126,6 +131,16 @@ export default async function AdminRequestsPage() {
               </form>
 
               <div className="mt-4 flex items-center justify-end gap-1.5">
+                {latestStaffReply && (
+                  <Link
+                    href={`/admin/qa/new?question=${encodeURIComponent(
+                      request.message
+                    )}&answer=${encodeURIComponent(latestStaffReply)}`}
+                    className="rounded-full border border-teal/30 px-3 py-1 text-xs font-medium text-teal-dark transition-colors hover:border-teal"
+                  >
+                    Add to Q&amp;A
+                  </Link>
+                )}
                 <ActionButton
                   action={(isNew ? markRequestResolved : markRequestNew).bind(null, request.id)}
                   className="rounded-full border border-ink/15 px-3 py-1 text-xs font-medium text-ink transition-colors hover:border-teal hover:text-teal"

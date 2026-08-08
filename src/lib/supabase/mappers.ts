@@ -1,6 +1,7 @@
 import type {
   Announcement,
   ContentBlock,
+  QaEntry,
   Session,
   SessionWithBlocks,
 } from "@/types/content";
@@ -101,6 +102,22 @@ export function mapSessionWithBlocks(
   return {
     ...mapSession(row),
     blocks: row.content_blocks.map(mapContentBlock),
+  };
+}
+
+type QaEntryRow = {
+  id: string;
+  question: string;
+  answer: string;
+  position: number;
+};
+
+export function mapQaEntry(row: QaEntryRow): QaEntry {
+  return {
+    id: row.id,
+    question: row.question,
+    answer: row.answer,
+    position: row.position,
   };
 }
 

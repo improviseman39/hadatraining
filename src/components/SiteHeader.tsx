@@ -103,6 +103,12 @@ export default function SiteHeader() {
             >
               Updates
             </Link>
+            <Link
+              href="/qa"
+              className="text-ink/80 transition-colors hover:text-teal"
+            >
+              Q&amp;A
+            </Link>
           </nav>
 
           <SiteSearch />
@@ -209,6 +215,13 @@ export default function SiteHeader() {
               className="rounded-lg px-3 py-2.5 text-ink/80 transition-colors hover:bg-ink/5 hover:text-teal"
             >
               Updates
+            </Link>
+            <Link
+              href="/qa"
+              onClick={() => setMenuOpen(false)}
+              className="rounded-lg px-3 py-2.5 text-ink/80 transition-colors hover:bg-ink/5 hover:text-teal"
+            >
+              Q&amp;A
             </Link>
 
             {isReady && isMember && (

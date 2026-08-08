@@ -40,6 +40,12 @@ export default async function AdminLayout({
             Announcements
           </Link>
           <Link
+            href="/admin/qa"
+            className="rounded-full border border-ink/15 px-4 py-2 font-medium text-ink transition-colors hover:border-teal hover:text-teal"
+          >
+            Q&amp;A
+          </Link>
+          <Link
             href="/admin/bookings"
             className="rounded-full border border-ink/15 px-4 py-2 font-medium text-ink transition-colors hover:border-teal hover:text-teal"
           >

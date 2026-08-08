@@ -20,6 +20,9 @@ yarn-error.log*
 # local env files
 .env*.local
 
+# local Claude Code settings
+.claude/
+
 # typescript
 *.tsbuildinfo
 next-env.d.ts

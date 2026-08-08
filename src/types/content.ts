@@ -50,6 +50,13 @@ export type Announcement = {
   position: number;
 };
 
+export type QaEntry = {
+  id: string;
+  question: string;
+  answer: string;
+  position: number;
+};
+
 export type RequestStatus = "new" | "resolved";
 
 export type UserRequest = {
