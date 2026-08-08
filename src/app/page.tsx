@@ -8,6 +8,7 @@ import UpdatesCarousel from "@/components/UpdatesCarousel";
 import HeroLoginButton from "@/components/HeroLoginButton";
 import HeroLatestPreview from "@/components/HeroLatestPreview";
 import CurriculumLoginBanner from "@/components/CurriculumLoginBanner";
+import ContinueWatchingCard from "@/components/ContinueWatchingCard";
 
 export const dynamic = "force-dynamic";
 
@@ -43,6 +44,47 @@ export default async function HomePage() {
       const lastVisibleDay = item.endDate && item.endDate > item.date ? item.endDate : item.date;
       return item.alwaysVisible || lastVisibleDay >= today;
     });
+
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  let continueWatching: {
+    sessionSlug: string;
+    sessionTitle: string;
+    sessionImageUrl: string;
+    blockId: string;
+    blockTitle: string | null;
+  } | null = null;
+  if (user) {
+    const { data: progressRow } = await supabase
+      .from("content_block_progress")
+      .select("content_block_id, sessions(*), content_blocks(title)")
+      .eq("user_id", user.id)
+      .order("last_active_at", { ascending: false })
+      .limit(1)
+      .maybeSingle();
+    // Postgrest infers embedded to-one relations as arrays without a
+    // generated Database type (this project doesn't have one) - normalize
+    // either shape, same pattern as BookingCard's sessionInfo().
+    const rawSession = progressRow?.sessions;
+    const progressSession = (Array.isArray(rawSession) ? rawSession[0] : rawSession) as
+      | Parameters<typeof mapSession>[0]
+      | undefined;
+    const rawBlock = progressRow?.content_blocks;
+    const progressBlock = (Array.isArray(rawBlock) ? rawBlock[0] : rawBlock) as
+      | { title: string | null }
+      | undefined;
+    if (progressRow && progressSession) {
+      const mappedProgressSession = mapSession(progressSession);
+      continueWatching = {
+        sessionSlug: mappedProgressSession.slug,
+        sessionTitle: mappedProgressSession.title,
+        sessionImageUrl: mappedProgressSession.imageUrl,
+        blockId: progressRow.content_block_id,
+        blockTitle: progressBlock?.title ?? null,
+      };
+    }
+  }
 
   return (
     <>
@@ -109,6 +151,16 @@ export default async function HomePage() {
           </div>
           <CurriculumLoginBanner />
         </div>
+
+        {continueWatching && (
+          <ContinueWatchingCard
+            sessionSlug={continueWatching.sessionSlug}
+            sessionTitle={continueWatching.sessionTitle}
+            sessionImageUrl={continueWatching.sessionImageUrl}
+            blockId={continueWatching.blockId}
+            blockTitle={continueWatching.blockTitle}
+          />
+        )}
 
         <div className="flex flex-col gap-16">
           {categoryOrder.map((category) => {

@@ -4,7 +4,7 @@ import { notFound } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { mapSession, mapSessionWithBlocks } from "@/lib/supabase/mappers";
-import SessionContent from "@/components/SessionContent";
+import SessionContent, { type BlockProgress } from "@/components/SessionContent";
 import SessionCard from "@/components/SessionCard";
 import SubTopicsBanner from "@/components/SubTopicsBanner";
 import SubTopicsSidebar from "@/components/SubTopicsSidebar";
@@ -98,6 +98,31 @@ export default async function SessionPage(
     ...mappedSession,
     blocks: await signPdfBlocks(mappedSession.blocks),
   };
+
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  const progressByBlockId: Record<string, BlockProgress> = {};
+  let resumeBlockId: string | null = null;
+  if (user) {
+    const { data: progressRows } = await supabase
+      .from("content_block_progress")
+      .select("content_block_id, last_position_seconds, viewed, last_active_at")
+      .eq("session_id", session.id);
+    for (const row of progressRows ?? []) {
+      progressByBlockId[row.content_block_id] = {
+        lastPositionSeconds: row.last_position_seconds,
+        viewed: row.viewed,
+      };
+    }
+    // Most-recently-active block in this session becomes the "continue
+    // where you left off" jump target, if there's more than one to choose
+    // between.
+    resumeBlockId =
+      (progressRows ?? []).slice().sort(
+        (a, b) => new Date(b.last_active_at).getTime() - new Date(a.last_active_at).getTime()
+      )[0]?.content_block_id ?? null;
+  }
 
   // Prev/next only makes sense for top-level sessions — a sub-topic is
   // discovered by browsing into its parent's page instead, via the
@@ -228,8 +253,20 @@ export default async function SessionPage(
               </div>
             )}
 
+            {resumeBlockId && (
+              <a
+                href={`#block-${resumeBlockId}`}
+                className="mt-8 flex items-center gap-2 self-start rounded-full border border-teal/30 bg-teal/5 px-4 py-2 text-xs font-medium text-teal-dark transition-colors hover:border-teal sm:mt-10"
+              >
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+                  <path d="M8 6.5v11l9-5.5-9-5.5z" fill="currentColor" />
+                </svg>
+                Continue where you left off
+              </a>
+            )}
+
             <div className="mt-10 sm:mt-12">
-              <SessionContent session={session} />
+              <SessionContent session={session} progressByBlockId={progressByBlockId} />
             </div>
           </div>
         </div>
