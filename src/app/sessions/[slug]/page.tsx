@@ -239,9 +239,15 @@ export default async function SessionPage(
                 Members only
               </span>
             )}
-            {!!sessionCompletionPercent && (
-              <span className="flex items-center gap-1.5 rounded-full bg-teal/90 px-3 py-1 text-xs font-medium text-porcelain">
-                {sessionCompletionPercent}% complete
+            {sessionCompletionPercent !== undefined && (
+              <span
+                className={`flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-medium ${
+                  sessionCompletionPercent > 0
+                    ? "bg-teal/90 text-porcelain"
+                    : "border border-porcelain/30 text-porcelain/90"
+                }`}
+              >
+                {sessionCompletionPercent === 100 ? "Completed" : `${sessionCompletionPercent}% complete`}
               </span>
             )}
           </div>

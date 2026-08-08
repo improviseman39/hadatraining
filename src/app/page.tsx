@@ -56,6 +56,7 @@ export default async function HomePage() {
     blockTitle: string | null;
   } | null = null;
   const completionBySessionId = new Map<string, number>();
+  let overallCompletionPercent: number | undefined;
   if (user) {
     const [{ data: progressRow }, { data: sessionProgressRows }] = await Promise.all([
       supabase
@@ -90,6 +91,12 @@ export default async function HomePage() {
     }
     for (const row of sessionProgressRows ?? []) {
       completionBySessionId.set(row.session_id, row.percent_complete);
+    }
+    if (sessionProgressRows && sessionProgressRows.length > 0) {
+      overallCompletionPercent = Math.round(
+        sessionProgressRows.reduce((sum, row) => sum + row.percent_complete, 0) /
+          sessionProgressRows.length
+      );
     }
   }
 
@@ -158,6 +165,32 @@ export default async function HomePage() {
           </div>
           <CurriculumLoginBanner />
         </div>
+
+        {overallCompletionPercent !== undefined && (
+          <div className="mb-8 rounded-2xl border border-teal/20 bg-teal/5 p-5 sm:p-6">
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <div>
+                <p className="text-sm font-medium text-ink">Your overall progress</p>
+                <p className="mt-0.5 text-sm text-muted">
+                  Across all {sessions.length} session{sessions.length === 1 ? "" : "s"}
+                </p>
+              </div>
+              <span
+                className={`text-2xl font-serif font-medium ${
+                  overallCompletionPercent === 100 ? "text-teal" : "text-ink"
+                }`}
+              >
+                {overallCompletionPercent}%
+              </span>
+            </div>
+            <div className="mt-4 h-2 w-full overflow-hidden rounded-full bg-ink/10">
+              <div
+                className="h-full rounded-full bg-teal transition-all"
+                style={{ width: `${overallCompletionPercent}%` }}
+              />
+            </div>
+          </div>
+        )}
 
         {continueWatching && (
           <ContinueWatchingCard
