@@ -8,6 +8,7 @@ export default function QaEntryForm({
   action,
   defaultValues,
   submitLabel,
+  showPrivacyReminder,
 }: {
   action: (formData: FormData) => Promise<ActionResult>;
   defaultValues?: {
@@ -15,6 +16,8 @@ export default function QaEntryForm({
     answer?: string;
   };
   submitLabel: string;
+  /** Shown when the fields were pre-filled from a member's request — staff need to scrub any personal details before this goes public. */
+  showPrivacyReminder?: boolean;
 }) {
   const [error, setError] = useState<string | null>(null);
   const [saved, setSaved] = useState(false);
@@ -34,6 +37,17 @@ export default function QaEntryForm({
 
   return (
     <form onSubmit={handleSubmit} className="flex flex-col gap-5">
+      {showPrivacyReminder && (
+        <div className="rounded-lg border border-terracotta/30 bg-terracotta/5 px-4 py-3 text-sm">
+          <p className="font-medium text-terracotta">Check for private details before publishing</p>
+          <p className="mt-1 text-ink/80">
+            This was pre-filled from a member&apos;s request. This page will be public — remove
+            any names, emails, phone numbers, or other personal information from the question and
+            answer below before saving.
+          </p>
+        </div>
+      )}
+
       <div>
         <label className="mb-1.5 block text-sm font-medium text-ink">Question</label>
         <textarea

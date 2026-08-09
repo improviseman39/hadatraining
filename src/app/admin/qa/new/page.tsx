@@ -24,6 +24,7 @@ export default async function NewQaEntryPage(props: {
             answer: searchParams.answer,
           }}
           submitLabel="Create Q&A entry"
+          showPrivacyReminder={Boolean(searchParams.question || searchParams.answer)}
         />
       </div>
     </div>

@@ -1,10 +1,12 @@
 "use client";
 
-import { useEffect, useState, useTransition } from "react";
+import { useEffect, useMemo, useState, useTransition } from "react";
 import Link from "next/link";
 import { useAuth } from "@/context/AuthContext";
 import { useRequestWidget } from "@/context/RequestWidgetContext";
 import { createClient } from "@/lib/supabase/client";
+import { mapQaEntry } from "@/lib/supabase/mappers";
+import type { QaEntry } from "@/types/content";
 import { submitRequest, sendRequestMessage } from "@/lib/actions/requests";
 
 type ThreadMessage = {
@@ -31,6 +33,33 @@ export default function RequestWidget() {
   const [reply, setReply] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
+  const [qaEntries, setQaEntries] = useState<QaEntry[] | null>(null);
+  const [qaQuery, setQaQuery] = useState("");
+  const [expandedQaId, setExpandedQaId] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!open || qaEntries !== null) return;
+    const supabase = createClient();
+    supabase
+      .from("qa_entries")
+      .select("*")
+      .order("position")
+      .then(({ data }) => {
+        setQaEntries((data ?? []).map(mapQaEntry));
+      });
+  }, [open, qaEntries]);
+
+  const qaMatches = useMemo(() => {
+    const query = qaQuery.trim().toLowerCase();
+    if (query.length < 2 || !qaEntries) return [];
+    return qaEntries
+      .filter(
+        (entry) =>
+          entry.question.toLowerCase().includes(query) ||
+          entry.answer.toLowerCase().includes(query)
+      )
+      .slice(0, 4);
+  }, [qaQuery, qaEntries]);
 
   useEffect(() => {
     if (!open || !user) return;
@@ -142,13 +171,70 @@ export default function RequestWidget() {
             </button>
           </div>
 
-          <Link
-            href="/qa"
-            onClick={closeWidget}
-            className="mt-1 text-xs font-medium text-teal underline-offset-2 hover:underline"
-          >
-            Check our Q&amp;A first &rarr;
-          </Link>
+          <div className="mt-2">
+            <input
+              type="text"
+              value={qaQuery}
+              onChange={(event) => setQaQuery(event.target.value)}
+              placeholder='Search our Q&A, e.g. "fiber"'
+              aria-label="Search our Q&A"
+              className="w-full rounded-lg border border-ink/15 bg-porcelain px-3 py-2 text-xs text-ink placeholder:text-muted/60 focus:border-teal focus:outline-none focus:ring-2 focus:ring-teal/30"
+            />
+
+            {qaQuery.trim().length < 2 && (
+              <Link
+                href="/qa"
+                onClick={closeWidget}
+                className="mt-1.5 inline-block text-xs font-medium text-teal underline-offset-2 hover:underline"
+              >
+                Browse all Q&amp;A &rarr;
+              </Link>
+            )}
+
+            {qaQuery.trim().length >= 2 && (
+              qaMatches.length > 0 ? (
+                <div className="mt-2 flex flex-col gap-1.5">
+                  {qaMatches.map((entry) => {
+                    const isExpanded = expandedQaId === entry.id;
+                    return (
+                      <div
+                        key={entry.id}
+                        className="rounded-lg border border-teal/20 bg-teal/5 px-3 py-2"
+                      >
+                        <button
+                          type="button"
+                          onClick={() => setExpandedQaId(isExpanded ? null : entry.id)}
+                          aria-expanded={isExpanded}
+                          className="flex w-full items-start justify-between gap-2 text-left text-xs font-medium text-ink"
+                        >
+                          <span>{entry.question}</span>
+                          <span aria-hidden="true" className="shrink-0 text-teal">
+                            {isExpanded ? "−" : "+"}
+                          </span>
+                        </button>
+                        {isExpanded && (
+                          <p className="mt-1.5 whitespace-pre-wrap text-xs leading-relaxed text-ink/70">
+                            {entry.answer}
+                          </p>
+                        )}
+                      </div>
+                    );
+                  })}
+                  <Link
+                    href="/qa"
+                    onClick={closeWidget}
+                    className="self-start text-xs font-medium text-teal underline-offset-2 hover:underline"
+                  >
+                    Browse all Q&amp;A &rarr;
+                  </Link>
+                </div>
+              ) : (
+                <p className="mt-2 text-xs text-muted">
+                  No matching Q&amp;A yet — send us a message below.
+                </p>
+              )
+            )}
+          </div>
 
           {mode === "loading" && (
             <p className="mt-4 text-sm text-muted">Loading…</p>
