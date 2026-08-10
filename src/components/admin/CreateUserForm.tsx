@@ -96,6 +96,7 @@ export default function CreateUserForm() {
             className="rounded-lg border border-ink/15 bg-porcelain px-3 py-2 text-sm text-ink focus:border-teal focus:outline-none focus:ring-2 focus:ring-teal/30"
           >
             <option value="user">User</option>
+            <option value="design">Design</option>
             <option value="admin">Admin</option>
             <option value="super_admin">Super Admin</option>
           </select>

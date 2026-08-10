@@ -7,13 +7,18 @@ export default async function AdminLayout({
 }: {
   children: React.ReactNode;
 }) {
-  const { role } = await requireRole(["admin", "super_admin"]);
+  const { role } = await requireRole(["design", "admin", "super_admin"]);
+  const isStaff = role === "admin" || role === "super_admin";
 
   const supabase = await createClient();
-  const { count: newRequestCount } = await supabase
-    .from("requests")
-    .select("id", { count: "exact", head: true })
-    .eq("status", "new");
+  const { count: newRequestCount } = isStaff
+    ? (
+        await supabase
+          .from("requests")
+          .select("id", { count: "exact", head: true })
+          .eq("status", "new")
+      )
+    : { count: 0 };
 
   return (
     <div className="container-page py-10 sm:py-14">
@@ -27,40 +32,50 @@ export default async function AdminLayout({
           </h1>
         </div>
         <nav className="flex flex-wrap items-center gap-2 text-sm">
+          {isStaff && (
+            <>
+              <Link
+                href="/admin/sessions"
+                className="rounded-full border border-ink/15 px-4 py-2 font-medium text-ink transition-colors hover:border-teal hover:text-teal"
+              >
+                Sessions
+              </Link>
+              <Link
+                href="/admin/announcements"
+                className="rounded-full border border-ink/15 px-4 py-2 font-medium text-ink transition-colors hover:border-teal hover:text-teal"
+              >
+                Announcements
+              </Link>
+              <Link
+                href="/admin/qa"
+                className="rounded-full border border-ink/15 px-4 py-2 font-medium text-ink transition-colors hover:border-teal hover:text-teal"
+              >
+                Q&amp;A
+              </Link>
+              <Link
+                href="/admin/bookings"
+                className="rounded-full border border-ink/15 px-4 py-2 font-medium text-ink transition-colors hover:border-teal hover:text-teal"
+              >
+                Bookings
+              </Link>
+              <Link
+                href="/admin/requests"
+                className="flex items-center gap-1.5 rounded-full border border-ink/15 px-4 py-2 font-medium text-ink transition-colors hover:border-teal hover:text-teal"
+              >
+                Requests
+                {!!newRequestCount && (
+                  <span className="flex h-5 min-w-5 items-center justify-center rounded-full bg-terracotta px-1.5 text-xs font-semibold text-porcelain">
+                    {newRequestCount}
+                  </span>
+                )}
+              </Link>
+            </>
+          )}
           <Link
-            href="/admin/sessions"
+            href="/admin/design"
             className="rounded-full border border-ink/15 px-4 py-2 font-medium text-ink transition-colors hover:border-teal hover:text-teal"
           >
-            Sessions
-          </Link>
-          <Link
-            href="/admin/announcements"
-            className="rounded-full border border-ink/15 px-4 py-2 font-medium text-ink transition-colors hover:border-teal hover:text-teal"
-          >
-            Announcements
-          </Link>
-          <Link
-            href="/admin/qa"
-            className="rounded-full border border-ink/15 px-4 py-2 font-medium text-ink transition-colors hover:border-teal hover:text-teal"
-          >
-            Q&amp;A
-          </Link>
-          <Link
-            href="/admin/bookings"
-            className="rounded-full border border-ink/15 px-4 py-2 font-medium text-ink transition-colors hover:border-teal hover:text-teal"
-          >
-            Bookings
-          </Link>
-          <Link
-            href="/admin/requests"
-            className="flex items-center gap-1.5 rounded-full border border-ink/15 px-4 py-2 font-medium text-ink transition-colors hover:border-teal hover:text-teal"
-          >
-            Requests
-            {!!newRequestCount && (
-              <span className="flex h-5 min-w-5 items-center justify-center rounded-full bg-terracotta px-1.5 text-xs font-semibold text-porcelain">
-                {newRequestCount}
-              </span>
-            )}
+            Design
           </Link>
           {role === "super_admin" && (
             <Link

@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { requireRole } from "@/lib/auth/requireRole";
 import { createClient } from "@/lib/supabase/server";
 import { deleteSession, moveSession } from "@/app/admin/sessions/actions";
 import ActionButton from "@/components/admin/ActionButton";
@@ -47,6 +48,7 @@ function flattenTree(sessions: SessionRow[]): FlatRow[] {
 }
 
 export default async function AdminSessionsPage() {
+  await requireRole(["admin", "super_admin"]);
   const supabase = await createClient();
   const [{ data: sessions }, { data: bookingRows }] = await Promise.all([
     supabase

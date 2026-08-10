@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { requireRole } from "@/lib/auth/requireRole";
 import { createClient } from "@/lib/supabase/server";
 import LocalDateTime from "@/components/LocalDateTime";
 import ActionButton from "@/components/admin/ActionButton";
@@ -16,6 +17,7 @@ type RequestMessage = {
 };
 
 export default async function AdminRequestsPage() {
+  await requireRole(["admin", "super_admin"]);
   const supabase = await createClient();
 
   const [{ data: requests }, { data: profiles }, { data: messages }] = await Promise.all([

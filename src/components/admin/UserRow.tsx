@@ -12,7 +12,7 @@ import {
 type Profile = {
   id: string;
   email: string;
-  role: "user" | "admin" | "super_admin";
+  role: "user" | "design" | "admin" | "super_admin";
   created_at: string;
   invited_by_email: string | null;
   group_id: string | null;
@@ -106,6 +106,7 @@ export default function UserRow({
           className="rounded-lg border border-ink/15 bg-porcelain px-2 py-1.5 text-sm text-ink focus:border-teal focus:outline-none focus:ring-2 focus:ring-teal/30 disabled:opacity-60"
         >
           <option value="user">User</option>
+          <option value="design">Design</option>
           <option value="admin">Admin</option>
           <option value="super_admin">Super Admin</option>
         </select>

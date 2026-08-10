@@ -1,4 +1,5 @@
 import { notFound } from "next/navigation";
+import { requireRole } from "@/lib/auth/requireRole";
 import { createClient } from "@/lib/supabase/server";
 import { updateSession } from "@/app/admin/sessions/actions";
 import SessionForm from "@/components/admin/SessionForm";
@@ -14,6 +15,7 @@ export default async function EditSessionPage(
     params: Promise<{ id: string }>;
   }
 ) {
+  await requireRole(["admin", "super_admin"]);
   const params = await props.params;
   const supabase = await createClient();
 

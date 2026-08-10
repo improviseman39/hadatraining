@@ -6,9 +6,18 @@ import { usePathname } from "next/navigation";
 import { useAuth } from "@/context/AuthContext";
 import { useRequestWidget } from "@/context/RequestWidgetContext";
 import { createClient } from "@/lib/supabase/client";
+import Image from "next/image";
 import SiteSearch from "@/components/SiteSearch";
 
-export default function SiteHeader() {
+export default function SiteHeader({
+  headerTitle,
+  headerSubtitle,
+  logoUrl,
+}: {
+  headerTitle: string;
+  headerSubtitle: string;
+  logoUrl: string | null;
+}) {
   const { isMember, isReady, role, logout } = useAuth();
   const { openWidget } = useRequestWidget();
   const isStaff = role === "admin" || role === "super_admin";
@@ -67,13 +76,28 @@ export default function SiteHeader() {
         <div className="flex items-center gap-3">
           <Link
             href="/"
-            className="flex items-baseline gap-2 font-serif text-lg font-semibold tracking-tight text-ink sm:text-xl"
+            className="flex items-center gap-2"
             onClick={() => setMenuOpen(false)}
           >
-            <span>HADA</span>
-            <span className="hidden text-sm font-normal tracking-wide text-muted sm:inline">
-              Aesthetic Training
-            </span>
+            {logoUrl ? (
+              <span className="relative block h-9 w-auto">
+                <Image
+                  src={logoUrl}
+                  alt={headerTitle}
+                  height={36}
+                  width={140}
+                  unoptimized
+                  className="h-9 w-auto object-contain"
+                />
+              </span>
+            ) : (
+              <span className="flex items-baseline gap-2 font-serif text-lg font-semibold tracking-tight text-ink sm:text-xl">
+                <span>{headerTitle}</span>
+                <span className="hidden text-sm font-normal tracking-wide text-muted sm:inline">
+                  {headerSubtitle}
+                </span>
+              </span>
+            )}
           </Link>
 
           {onSessionPage && (

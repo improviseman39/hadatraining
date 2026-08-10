@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import { requireRole } from "@/lib/auth/requireRole";
 import { createClient } from "@/lib/supabase/server";
 import { updateAnnouncement } from "@/app/admin/announcements/actions";
 import AnnouncementForm from "@/components/admin/AnnouncementForm";
@@ -11,6 +12,7 @@ export default async function EditAnnouncementPage(
     params: Promise<{ id: string }>;
   }
 ) {
+  await requireRole(["admin", "super_admin"]);
   const params = await props.params;
   const supabase = await createClient();
   const { data: announcement, error } = await supabase

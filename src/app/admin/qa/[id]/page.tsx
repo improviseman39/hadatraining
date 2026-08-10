@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import { requireRole } from "@/lib/auth/requireRole";
 import { createClient } from "@/lib/supabase/server";
 import { updateQaEntry } from "@/app/admin/qa/actions";
 import QaEntryForm from "@/components/admin/QaEntryForm";
@@ -9,6 +10,7 @@ export const dynamic = "force-dynamic";
 export default async function EditQaEntryPage(props: {
   params: Promise<{ id: string }>;
 }) {
+  await requireRole(["admin", "super_admin"]);
   const params = await props.params;
   const supabase = await createClient();
   const { data: entry, error } = await supabase

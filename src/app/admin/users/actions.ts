@@ -9,7 +9,7 @@ import { sendEmail } from "@/lib/resend";
 
 const LOGIN_URL = "https://www.hadatraining.com/login";
 
-const ROLES = ["user", "admin", "super_admin"] as const;
+const ROLES = ["user", "design", "admin", "super_admin"] as const;
 type RoleValue = (typeof ROLES)[number];
 
 // Matches [auth] minimum_password_length in supabase/config.toml.

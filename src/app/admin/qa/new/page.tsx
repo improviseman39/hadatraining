@@ -1,10 +1,12 @@
 import Link from "next/link";
+import { requireRole } from "@/lib/auth/requireRole";
 import { createQaEntry } from "@/app/admin/qa/actions";
 import QaEntryForm from "@/components/admin/QaEntryForm";
 
 export default async function NewQaEntryPage(props: {
   searchParams: Promise<{ question?: string; answer?: string }>;
 }) {
+  await requireRole(["admin", "super_admin"]);
   const searchParams = await props.searchParams;
 
   return (

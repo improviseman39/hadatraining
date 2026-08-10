@@ -1,8 +1,10 @@
 import Link from "next/link";
+import { requireRole } from "@/lib/auth/requireRole";
 import { createAnnouncement } from "@/app/admin/announcements/actions";
 import AnnouncementForm from "@/components/admin/AnnouncementForm";
 
-export default function NewAnnouncementPage() {
+export default async function NewAnnouncementPage() {
+  await requireRole(["admin", "super_admin"]);
   return (
     <div>
       <Link

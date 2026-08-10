@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { requireRole } from "@/lib/auth/requireRole";
 import { createClient } from "@/lib/supabase/server";
 import { deleteAnnouncement, moveAnnouncement } from "@/app/admin/announcements/actions";
 import ActionButton from "@/components/admin/ActionButton";
@@ -6,6 +7,7 @@ import ActionButton from "@/components/admin/ActionButton";
 export const dynamic = "force-dynamic";
 
 export default async function AdminAnnouncementsPage() {
+  await requireRole(["admin", "super_admin"]);
   const supabase = await createClient();
   const { data: announcements } = await supabase
     .from("announcements")

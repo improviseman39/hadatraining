@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { requireRole } from "@/lib/auth/requireRole";
 import { createClient } from "@/lib/supabase/server";
 import { createSession } from "@/app/admin/sessions/actions";
 import SessionForm from "@/components/admin/SessionForm";
@@ -11,6 +12,7 @@ export default async function NewSessionPage(
     searchParams: Promise<{ parent?: string }>;
   }
 ) {
+  await requireRole(["admin", "super_admin"]);
   const searchParams = await props.searchParams;
   const supabase = await createClient();
   const { data: sessions } = await supabase.from("sessions").select("id, title, parent_id");

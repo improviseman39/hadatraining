@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import { requireRole } from "@/lib/auth/requireRole";
 import { createClient } from "@/lib/supabase/server";
 import { updateBooking } from "@/app/admin/bookings/actions";
 import BookingForm from "@/components/admin/BookingForm";
@@ -11,6 +12,7 @@ export default async function EditBookingPage(
     params: Promise<{ id: string }>;
   }
 ) {
+  await requireRole(["admin", "super_admin"]);
   const params = await props.params;
   const supabase = await createClient();
 

@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { requireRole } from "@/lib/auth/requireRole";
 import { createClient } from "@/lib/supabase/server";
 import { deleteBooking } from "@/app/admin/bookings/actions";
 import LocalDateTime from "@/components/LocalDateTime";
@@ -7,6 +8,7 @@ import ActionButton from "@/components/admin/ActionButton";
 export const dynamic = "force-dynamic";
 
 export default async function AdminBookingsPage() {
+  await requireRole(["admin", "super_admin"]);
   const supabase = await createClient();
 
   const [{ data: bookings }, { data: profiles }] = await Promise.all([

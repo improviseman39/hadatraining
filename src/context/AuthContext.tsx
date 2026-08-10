@@ -10,7 +10,7 @@ import {
 import type { User } from "@supabase/supabase-js";
 import { createClient } from "@/lib/supabase/client";
 
-export type Role = "super_admin" | "admin" | "user";
+export type Role = "super_admin" | "admin" | "user" | "design";
 
 type AuthContextValue = {
   user: User | null;

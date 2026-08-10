@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { requireRole } from "@/lib/auth/requireRole";
 import { createClient } from "@/lib/supabase/server";
 import { deleteQaEntry, moveQaEntry } from "@/app/admin/qa/actions";
 import ActionButton from "@/components/admin/ActionButton";
@@ -6,6 +7,7 @@ import ActionButton from "@/components/admin/ActionButton";
 export const dynamic = "force-dynamic";
 
 export default async function AdminQaPage() {
+  await requireRole(["admin", "super_admin"]);
   const supabase = await createClient();
   const { data: entries } = await supabase
     .from("qa_entries")
