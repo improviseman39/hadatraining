@@ -13,6 +13,9 @@ type SiteSettings = {
   primary_color_dark: string;
   heading_font: "fraunces" | "playfair" | "lora";
   body_font: "inter" | "system";
+  instagram_url: string | null;
+  line_url: string | null;
+  threads_url: string | null;
 };
 
 const HEADING_FONTS: { value: SiteSettings["heading_font"]; label: string }[] = [
@@ -135,6 +138,36 @@ export default function DesignSettingsForm({
               </option>
             ))}
           </select>
+        </div>
+      </div>
+
+      <div>
+        <label className="mb-1.5 block text-sm font-medium text-ink">Social links</label>
+        <p className="mb-2 text-xs text-muted">
+          Shown in the site footer and the Contact us popup. Leave blank to hide any of these.
+        </p>
+        <div className="flex flex-col gap-2.5">
+          <input
+            type="url"
+            name="instagram_url"
+            placeholder="https://www.instagram.com/your-account"
+            defaultValue={settings.instagram_url ?? ""}
+            className="w-full rounded-lg border border-ink/15 bg-porcelain px-3 py-2 text-sm text-ink focus:border-teal focus:outline-none focus:ring-2 focus:ring-teal/30"
+          />
+          <input
+            type="url"
+            name="line_url"
+            placeholder="https://line.me/R/ti/p/@your-line-id"
+            defaultValue={settings.line_url ?? ""}
+            className="w-full rounded-lg border border-ink/15 bg-porcelain px-3 py-2 text-sm text-ink focus:border-teal focus:outline-none focus:ring-2 focus:ring-teal/30"
+          />
+          <input
+            type="url"
+            name="threads_url"
+            placeholder="https://www.threads.net/@your-account"
+            defaultValue={settings.threads_url ?? ""}
+            className="w-full rounded-lg border border-ink/15 bg-porcelain px-3 py-2 text-sm text-ink focus:border-teal focus:outline-none focus:ring-2 focus:ring-teal/30"
+          />
         </div>
       </div>
 

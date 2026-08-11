@@ -67,9 +67,17 @@ export default async function RootLayout({
   const supabase = await createClient();
   const { data: settings } = await supabase
     .from("site_settings")
-    .select("header_title, header_subtitle, logo_storage_path, primary_color, primary_color_dark, heading_font, body_font")
+    .select(
+      "header_title, header_subtitle, logo_storage_path, primary_color, primary_color_dark, heading_font, body_font, instagram_url, line_url, threads_url"
+    )
     .eq("id", true)
     .single();
+
+  const socialLinks = {
+    instagramUrl: settings?.instagram_url ?? null,
+    lineUrl: settings?.line_url ?? null,
+    threadsUrl: settings?.threads_url ?? null,
+  };
 
   const logoUrl = settings?.logo_storage_path
     ? `${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/branding-images/${settings.logo_storage_path}`
@@ -107,8 +115,9 @@ export default async function RootLayout({
             <SiteFooter
               headerTitle={settings?.header_title ?? "HADA"}
               headerSubtitle={settings?.header_subtitle ?? "Aesthetic Training"}
+              {...socialLinks}
             />
-            <RequestWidget />
+            <RequestWidget {...socialLinks} />
           </RequestWidgetProvider>
         </AuthProvider>
       </body>

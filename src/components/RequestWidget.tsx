@@ -48,7 +48,15 @@ type Thread = {
   replies: ThreadMessage[];
 };
 
-export default function RequestWidget() {
+export default function RequestWidget({
+  instagramUrl,
+  lineUrl,
+  threadsUrl,
+}: {
+  instagramUrl?: string | null;
+  lineUrl?: string | null;
+  threadsUrl?: string | null;
+}) {
   const { user, isMember, isReady } = useAuth();
   const { open, closeWidget, toggleWidget } = useRequestWidget();
   const [mode, setMode] = useState<"loading" | "thread" | "compose">("compose");
@@ -229,6 +237,42 @@ export default function RequestWidget() {
           >
             Browse all Q&amp;A &rarr;
           </Link>
+
+          {(instagramUrl || lineUrl || threadsUrl) && (
+            <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 border-t border-ink/10 pt-2 text-xs text-muted">
+              <span>Or reach us on</span>
+              {instagramUrl && (
+                <a
+                  href={instagramUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="font-medium text-ink/70 underline-offset-2 hover:text-teal hover:underline"
+                >
+                  Instagram
+                </a>
+              )}
+              {lineUrl && (
+                <a
+                  href={lineUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="font-medium text-ink/70 underline-offset-2 hover:text-teal hover:underline"
+                >
+                  LINE
+                </a>
+              )}
+              {threadsUrl && (
+                <a
+                  href={threadsUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="font-medium text-ink/70 underline-offset-2 hover:text-teal hover:underline"
+                >
+                  Threads
+                </a>
+              )}
+            </div>
+          )}
 
           {mode === "loading" && (
             <p className="mt-4 text-sm text-muted">Loading…</p>

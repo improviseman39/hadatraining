@@ -8,6 +8,18 @@ const HEADING_FONTS = ["fraunces", "playfair", "lora"] as const;
 const BODY_FONTS = ["inter", "system"] as const;
 const HEX_COLOR = /^#[0-9a-fA-F]{6}$/;
 
+function normalizeUrl(raw: FormDataEntryValue | null): string | null {
+  const value = String(raw ?? "").trim();
+  if (!value) return null;
+  try {
+    const url = new URL(value);
+    if (url.protocol !== "http:" && url.protocol !== "https:") return null;
+    return url.toString();
+  } catch {
+    return null;
+  }
+}
+
 export async function updateSiteSettings(formData: FormData) {
   const { user } = await requireRole(["design", "admin", "super_admin"]);
   const supabase = await createClient();
@@ -34,6 +46,16 @@ export async function updateSiteSettings(formData: FormData) {
     return { error: "Invalid body font." };
   }
 
+  const socialFields = ["instagram_url", "line_url", "threads_url"] as const;
+  const socialValues: Record<string, string | null> = {};
+  for (const field of socialFields) {
+    const raw = formData.get(field);
+    if (raw && String(raw).trim() && normalizeUrl(raw) === null) {
+      return { error: "Social links must be valid web addresses (starting with https://)." };
+    }
+    socialValues[field] = normalizeUrl(raw);
+  }
+
   const { error } = await supabase
     .from("site_settings")
     .update({
@@ -44,6 +66,9 @@ export async function updateSiteSettings(formData: FormData) {
       heading_font: headingFont,
       body_font: bodyFont,
       logo_storage_path: removeLogo ? null : logoStoragePath || undefined,
+      instagram_url: socialValues.instagram_url,
+      line_url: socialValues.line_url,
+      threads_url: socialValues.threads_url,
       updated_by: user.id,
     })
     .eq("id", true);
