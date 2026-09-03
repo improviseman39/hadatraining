@@ -208,7 +208,7 @@ export default async function SessionPage(
         <div className="container-page relative flex h-full flex-col justify-end pb-8">
           <div className="absolute top-6 flex w-fit flex-wrap items-center gap-2 text-sm font-medium text-porcelain">
             <Link
-              href="/#curriculum"
+              href="/curriculum"
               className="flex items-center gap-1.5 rounded-full border border-porcelain/30 bg-ink/40 px-3 py-1.5 backdrop-blur-sm transition-colors hover:border-teal hover:bg-ink/60"
             >
               <span aria-hidden="true">&larr;</span> Back to curriculum

@@ -102,7 +102,7 @@ export default function SiteHeader({
 
           {onSessionPage && (
             <Link
-              href="/#curriculum"
+              href="/curriculum"
               aria-label="Back to curriculum"
               className="flex items-center gap-1.5 rounded-full border border-ink/15 px-2.5 py-1.5 text-xs font-medium text-ink/80 transition-colors hover:border-teal hover:text-teal sm:px-3"
             >
@@ -116,7 +116,7 @@ export default function SiteHeader({
           {/* Full nav — only once there's room for every item on one line */}
           <nav className="hidden items-center gap-5 text-sm lg:flex">
             <Link
-              href="/#curriculum"
+              href="/curriculum"
               className="text-ink/80 transition-colors hover:text-teal"
             >
               Curriculum
@@ -227,7 +227,7 @@ export default function SiteHeader({
         >
           <div className="flex flex-col gap-1 text-base">
             <Link
-              href="/#curriculum"
+              href="/curriculum"
               onClick={() => setMenuOpen(false)}
               className="rounded-lg px-3 py-2.5 text-ink/80 transition-colors hover:bg-ink/5 hover:text-teal"
             >
