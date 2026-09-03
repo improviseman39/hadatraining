@@ -3,7 +3,6 @@ import { createClient } from "@/lib/supabase/server";
 import { mapSession } from "@/lib/supabase/mappers";
 import SessionCard from "@/components/SessionCard";
 import CurriculumLoginBanner from "@/components/CurriculumLoginBanner";
-import ContinueWatchingCard from "@/components/ContinueWatchingCard";
 
 export const dynamic = "force-dynamic";
 
@@ -27,58 +26,19 @@ export default async function CurriculumPage() {
 
   const sessions = (sessionRows ?? []).map(mapSession);
 
+  // Per-session completion badges stay here so browsing still shows "what
+  // have I done" at a glance — the fuller dashboard (continue-watching,
+  // overall %) lives at /my-learning instead of duplicating it here.
   const {
     data: { user },
   } = await supabase.auth.getUser();
-  let continueWatching: {
-    sessionSlug: string;
-    sessionTitle: string;
-    sessionImageUrl: string;
-    blockId: string;
-    blockTitle: string | null;
-  } | null = null;
   const completionBySessionId = new Map<string, number>();
-  let overallCompletionPercent: number | undefined;
   if (user) {
-    const [{ data: progressRow }, { data: sessionProgressRows }] = await Promise.all([
-      supabase
-        .from("content_block_progress")
-        .select("content_block_id, sessions(*), content_blocks(title)")
-        .eq("user_id", user.id)
-        .order("last_active_at", { ascending: false })
-        .limit(1)
-        .maybeSingle(),
-      supabase.from("my_session_progress").select("session_id, percent_complete"),
-    ]);
-    // Postgrest infers embedded to-one relations as arrays without a
-    // generated Database type (this project doesn't have one) - normalize
-    // either shape, same pattern as BookingCard's sessionInfo().
-    const rawSession = progressRow?.sessions;
-    const progressSession = (Array.isArray(rawSession) ? rawSession[0] : rawSession) as
-      | Parameters<typeof mapSession>[0]
-      | undefined;
-    const rawBlock = progressRow?.content_blocks;
-    const progressBlock = (Array.isArray(rawBlock) ? rawBlock[0] : rawBlock) as
-      | { title: string | null }
-      | undefined;
-    if (progressRow && progressSession) {
-      const mappedProgressSession = mapSession(progressSession);
-      continueWatching = {
-        sessionSlug: mappedProgressSession.slug,
-        sessionTitle: mappedProgressSession.title,
-        sessionImageUrl: mappedProgressSession.imageUrl,
-        blockId: progressRow.content_block_id,
-        blockTitle: progressBlock?.title ?? null,
-      };
-    }
+    const { data: sessionProgressRows } = await supabase
+      .from("my_session_progress")
+      .select("session_id, percent_complete");
     for (const row of sessionProgressRows ?? []) {
       completionBySessionId.set(row.session_id, row.percent_complete);
-    }
-    if (sessionProgressRows && sessionProgressRows.length > 0) {
-      overallCompletionPercent = Math.round(
-        sessionProgressRows.reduce((sum, row) => sum + row.percent_complete, 0) /
-          sessionProgressRows.length
-      );
     }
   }
 
@@ -100,44 +60,6 @@ export default async function CurriculumPage() {
         </div>
         <CurriculumLoginBanner />
       </div>
-
-      {overallCompletionPercent !== undefined && (
-        <div className="mt-10 rounded-2xl border border-teal/20 bg-teal/5 p-5 sm:p-6">
-          <div className="flex flex-wrap items-center justify-between gap-3">
-            <div>
-              <p className="text-sm font-medium text-ink">Your overall progress</p>
-              <p className="mt-0.5 text-sm text-muted">
-                Across all {sessions.length} session{sessions.length === 1 ? "" : "s"}
-              </p>
-            </div>
-            <span
-              className={`text-2xl font-serif font-medium ${
-                overallCompletionPercent === 100 ? "text-teal" : "text-ink"
-              }`}
-            >
-              {overallCompletionPercent}%
-            </span>
-          </div>
-          <div className="mt-4 h-2 w-full overflow-hidden rounded-full bg-ink/10">
-            <div
-              className="h-full rounded-full bg-teal transition-all"
-              style={{ width: `${overallCompletionPercent}%` }}
-            />
-          </div>
-        </div>
-      )}
-
-      {continueWatching && (
-        <div className="mt-8">
-          <ContinueWatchingCard
-            sessionSlug={continueWatching.sessionSlug}
-            sessionTitle={continueWatching.sessionTitle}
-            sessionImageUrl={continueWatching.sessionImageUrl}
-            blockId={continueWatching.blockId}
-            blockTitle={continueWatching.blockTitle}
-          />
-        </div>
-      )}
 
       <div className="mt-12 flex flex-col gap-16 sm:mt-16">
         {categoryOrder.map((category) => {

@@ -142,6 +142,12 @@ export default function SiteHeader({
             {isReady && isMember ? (
               <>
                 <Link
+                  href="/my-learning"
+                  className="rounded-full border border-teal/30 bg-teal/5 px-3 py-1.5 text-xs font-medium text-teal-dark transition-colors hover:border-teal"
+                >
+                  My Learning
+                </Link>
+                <Link
                   href="/timetable"
                   className="rounded-full border border-ink/15 px-3 py-1.5 text-xs font-medium text-ink transition-colors hover:border-teal hover:text-teal"
                 >
@@ -250,6 +256,13 @@ export default function SiteHeader({
 
             {isReady && isMember && (
               <>
+                <Link
+                  href="/my-learning"
+                  onClick={() => setMenuOpen(false)}
+                  className="rounded-lg px-3 py-2.5 text-teal-dark transition-colors hover:bg-teal/10"
+                >
+                  My Learning
+                </Link>
                 <Link
                   href="/timetable"
                   onClick={() => setMenuOpen(false)}
