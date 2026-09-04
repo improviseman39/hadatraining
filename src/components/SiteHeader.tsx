@@ -186,12 +186,20 @@ export default function SiteHeader({
                 </button>
               </>
             ) : (
-              <Link
-                href="/login"
-                className="rounded-full bg-teal px-4 py-2 font-medium text-porcelain transition-colors hover:bg-teal-dark"
-              >
-                Log in
-              </Link>
+              <>
+                <Link
+                  href="/class-login"
+                  className="text-ink/70 transition-colors hover:text-teal"
+                >
+                  Class login
+                </Link>
+                <Link
+                  href="/login"
+                  className="rounded-full bg-teal px-4 py-2 font-medium text-porcelain transition-colors hover:bg-teal-dark"
+                >
+                  Log in
+                </Link>
+              </>
             )}
           </div>
 
@@ -253,6 +261,16 @@ export default function SiteHeader({
             >
               Q&amp;A
             </Link>
+
+            {!(isReady && isMember) && (
+              <Link
+                href="/class-login"
+                onClick={() => setMenuOpen(false)}
+                className="rounded-lg px-3 py-2.5 text-ink/80 transition-colors hover:bg-ink/5 hover:text-teal"
+              >
+                Class login
+              </Link>
+            )}
 
             {isReady && isMember && (
               <>

@@ -4,6 +4,8 @@ import InviteUserForm from "@/components/admin/InviteUserForm";
 import CreateUserForm from "@/components/admin/CreateUserForm";
 import UserRow from "@/components/admin/UserRow";
 import GroupsPanel from "@/components/admin/GroupsPanel";
+import ClassLoginPanel from "@/components/admin/ClassLoginPanel";
+import PublicSignupToggle from "@/components/admin/PublicSignupToggle";
 
 export const dynamic = "force-dynamic";
 
@@ -14,13 +16,23 @@ export default async function AdminUsersPage() {
     data: { user: currentUser },
   } = await supabase.auth.getUser();
 
-  const [{ data: profiles }, { data: groups }] = await Promise.all([
-    supabase
-      .from("profiles")
-      .select("id, email, role, created_at, group_id, invited_by_profile:profiles!invited_by(email)")
-      .order("created_at"),
-    supabase.from("groups").select("id, name").order("name"),
-  ]);
+  const [{ data: profiles }, { data: groups }, { data: credentials }, { data: seats }, { data: settings }] =
+    await Promise.all([
+      supabase
+        .from("profiles")
+        .select("id, email, role, created_at, group_id, invited_by_profile:profiles!invited_by(email)")
+        .order("created_at"),
+      supabase.from("groups").select("id, name").order("name"),
+      supabase
+        .from("group_login_credentials")
+        .select("group_id, username, seat_limit, active"),
+      supabase
+        .from("group_seats")
+        .select("id, group_id, claimed_at, last_seen_at, revoked_at")
+        .is("revoked_at", null)
+        .order("claimed_at"),
+      supabase.from("site_settings").select("public_signup_enabled").eq("id", true).single(),
+    ]);
 
   const groupList = groups ?? [];
   const memberCounts = new Map<string, number>();
@@ -29,13 +41,36 @@ export default async function AdminUsersPage() {
     memberCounts.set(profile.group_id, (memberCounts.get(profile.group_id) ?? 0) + 1);
   }
 
+  const credentialByGroup = new Map((credentials ?? []).map((c) => [c.group_id, c]));
+  const seatsByGroup = new Map<string, typeof seats>();
+  for (const seat of seats ?? []) {
+    const list = seatsByGroup.get(seat.group_id) ?? [];
+    list.push(seat);
+    seatsByGroup.set(seat.group_id, list);
+  }
+
   return (
     <div>
       <h2 className="mb-6 font-serif text-xl text-ink">Users</h2>
 
+      <div className="mb-4">
+        <PublicSignupToggle enabled={settings?.public_signup_enabled ?? true} />
+      </div>
+
       <div className="mb-8">
         <GroupsPanel
           groups={groupList.map((g) => ({ ...g, memberCount: memberCounts.get(g.id) ?? 0 }))}
+        />
+      </div>
+
+      <div className="mb-8">
+        <ClassLoginPanel
+          groups={groupList.map((g) => ({
+            id: g.id,
+            name: g.name,
+            credential: credentialByGroup.get(g.id) ?? null,
+            seats: seatsByGroup.get(g.id) ?? [],
+          }))}
         />
       </div>
 

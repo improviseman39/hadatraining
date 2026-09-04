@@ -6,6 +6,7 @@ import { requireRole } from "@/lib/auth/requireRole";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { sendEmail } from "@/lib/resend";
+import { hashPassword } from "@/lib/classCredentials";
 
 const LOGIN_URL = "https://www.hadatraining.com/login";
 
@@ -294,5 +295,117 @@ export async function changeUserGroup(userId: string, formData: FormData) {
   if (error) return { error: error.message };
 
   revalidatePath("/admin/users");
+  return { success: true };
+}
+
+// --- temporary shared class-login credentials (0034_group_class_login.sql) ---
+//
+// Unlike classLogin.ts (which runs pre-authentication and has no choice but
+// the service-role client), everything below runs inside an already-
+// authenticated super_admin request — /admin/users/layout.tsx enforces that
+// above this whole route — so these use the regular per-request client,
+// same as every other mutation in this file, and RLS's
+// group_login_credentials_all_super_admin / group_seats_all_super_admin
+// policies do the real access check.
+
+const MIN_CLASS_PASSWORD_LENGTH = 8;
+
+export type ClassCredential = {
+  group_id: string;
+  username: string;
+  seat_limit: number;
+  active: boolean;
+};
+
+export type GroupSeat = {
+  id: string;
+  claimed_at: string;
+  last_seen_at: string;
+  revoked_at: string | null;
+};
+
+export async function setGroupCredential(formData: FormData) {
+  await requireRole(["super_admin"]);
+
+  const groupId = String(formData.get("group_id") ?? "").trim();
+  const username = String(formData.get("username") ?? "").trim().toLowerCase();
+  const password = String(formData.get("password") ?? "");
+  const seatLimit = Number(formData.get("seat_limit") ?? 200);
+
+  if (!groupId) return { error: "Choose a group first." };
+  if (!username) return { error: "Username is required." };
+  if (password.length < MIN_CLASS_PASSWORD_LENGTH) {
+    return { error: `Password must be at least ${MIN_CLASS_PASSWORD_LENGTH} characters.` };
+  }
+  if (!Number.isInteger(seatLimit) || seatLimit < 1) {
+    return { error: "Seat limit must be a positive number." };
+  }
+
+  const supabase = await createClient();
+  const { error } = await supabase.from("group_login_credentials").upsert(
+    {
+      group_id: groupId,
+      username,
+      password_hash: hashPassword(password),
+      seat_limit: seatLimit,
+      active: true,
+    },
+    { onConflict: "group_id" }
+  );
+  if (error) {
+    if (/duplicate key/.test(error.message)) {
+      return { error: "That username is already used by another class." };
+    }
+    return { error: error.message };
+  }
+
+  revalidatePath("/admin/users");
+  return { success: true };
+}
+
+export async function setGroupCredentialActive(groupId: string, active: boolean) {
+  await requireRole(["super_admin"]);
+
+  const supabase = await createClient();
+  const { error } = await supabase
+    .from("group_login_credentials")
+    .update({ active })
+    .eq("group_id", groupId);
+  if (error) return { error: error.message };
+
+  revalidatePath("/admin/users");
+  return { success: true };
+}
+
+/** Frees a claimed seat (lost device, person left) — that device's cookie
+ * stops working next time, and the slot becomes available to someone new.
+ * Deliberately doesn't delete the underlying auth.users seat account, just
+ * in case its progress needs to be looked up later. */
+export async function revokeSeat(seatId: string) {
+  await requireRole(["super_admin"]);
+
+  const supabase = await createClient();
+  const { error } = await supabase
+    .from("group_seats")
+    .update({ revoked_at: new Date().toISOString() })
+    .eq("id", seatId);
+  if (error) return { error: error.message };
+
+  revalidatePath("/admin/users");
+  return { success: true };
+}
+
+export async function setPublicSignupEnabled(enabled: boolean) {
+  await requireRole(["super_admin"]);
+
+  const supabase = await createClient();
+  const { error } = await supabase
+    .from("site_settings")
+    .update({ public_signup_enabled: enabled })
+    .eq("id", true);
+  if (error) return { error: error.message };
+
+  revalidatePath("/admin/users");
+  revalidatePath("/signup");
   return { success: true };
 }

@@ -1,56 +1,45 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
+import { classLogin } from "@/lib/actions/classLogin";
 import { createClient } from "@/lib/supabase/client";
 import MfaChallenge from "@/components/MfaChallenge";
 
-export default function LoginForm() {
+export default function ClassLoginForm() {
   const router = useRouter();
-  const [email, setEmail] = useState("");
+  const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [awaitingMfa, setAwaitingMfa] = useState(false);
-  const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [pending, startTransition] = useTransition();
 
-  async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
+  function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    setSubmitting(true);
     setError(null);
+    const formData = new FormData(event.currentTarget);
 
-    const supabase = createClient();
-    let signInError;
-    try {
-      ({ error: signInError } = await supabase.auth.signInWithPassword({
-        email,
-        password,
-      }));
-    } catch {
-      setError(
-        "Login isn't connected yet — the site's Supabase project hasn't been set up."
-      );
-      setSubmitting(false);
-      return;
-    }
+    startTransition(async () => {
+      const result = await classLogin(formData);
+      if (result?.error) {
+        setError(result.error);
+        return;
+      }
 
-    if (signInError) {
-      setError(signInError.message);
-      setSubmitting(false);
-      return;
-    }
+      // The server action signs the browser in but never redirects itself
+      // (see classLogin.ts) — check for an outstanding TOTP challenge here,
+      // the same way LoginForm does right after its own sign-in call.
+      const supabase = createClient();
+      const { data: aal } = await supabase.auth.mfa.getAuthenticatorAssuranceLevel();
+      if (aal && aal.nextLevel === "aal2" && aal.currentLevel !== "aal2") {
+        setAwaitingMfa(true);
+        return;
+      }
 
-    // 2FA is enrolled and this session hasn't been challenged for it yet —
-    // show the code prompt instead of completing login.
-    const { data: aal } = await supabase.auth.mfa.getAuthenticatorAssuranceLevel();
-    if (aal && aal.nextLevel === "aal2" && aal.currentLevel !== "aal2") {
-      setAwaitingMfa(true);
-      setSubmitting(false);
-      return;
-    }
-
-    router.push("/");
-    router.refresh();
+      router.push("/");
+      router.refresh();
+    });
   }
 
   if (awaitingMfa) {
@@ -71,28 +60,27 @@ export default function LoginForm() {
     >
       <div className="flex flex-col gap-5">
         <div>
-          <label htmlFor="email" className="mb-2 block text-sm font-medium text-ink">
-            Email address
+          <label htmlFor="class-username" className="mb-2 block text-sm font-medium text-ink">
+            Class username
           </label>
           <input
-            id="email"
-            name="email"
-            type="email"
+            id="class-username"
+            name="username"
             required
-            autoComplete="email"
-            placeholder="you@clinic.com"
-            value={email}
-            onChange={(event) => setEmail(event.target.value)}
+            autoComplete="username"
+            placeholder="e.g. hada2024"
+            value={username}
+            onChange={(event) => setUsername(event.target.value)}
             className="w-full rounded-lg border border-ink/15 bg-porcelain px-4 py-2.5 text-ink placeholder:text-muted/60 focus:border-teal focus:outline-none focus:ring-2 focus:ring-teal/30"
           />
         </div>
 
         <div>
-          <label htmlFor="password" className="mb-2 block text-sm font-medium text-ink">
-            Password
+          <label htmlFor="class-password" className="mb-2 block text-sm font-medium text-ink">
+            Class password
           </label>
           <input
-            id="password"
+            id="class-password"
             name="password"
             type="password"
             required
@@ -102,11 +90,6 @@ export default function LoginForm() {
             onChange={(event) => setPassword(event.target.value)}
             className="w-full rounded-lg border border-ink/15 bg-porcelain px-4 py-2.5 text-ink placeholder:text-muted/60 focus:border-teal focus:outline-none focus:ring-2 focus:ring-teal/30"
           />
-          <p className="mt-2 text-right text-xs">
-            <Link href="/forgot-password" className="font-medium text-teal hover:underline">
-              Forgot password?
-            </Link>
-          </p>
         </div>
 
         {error && (
@@ -117,16 +100,17 @@ export default function LoginForm() {
 
         <button
           type="submit"
-          disabled={submitting}
+          disabled={pending}
           className="mt-2 w-full rounded-full bg-ink px-6 py-3 text-sm font-medium text-porcelain transition-colors hover:bg-teal disabled:opacity-70"
         >
-          {submitting ? "Logging in…" : "Log in"}
+          {pending ? "Signing in…" : "Continue"}
         </button>
 
         <p className="text-center text-xs leading-relaxed text-muted">
-          Don&apos;t have an account?{" "}
-          <Link href="/signup" className="font-medium text-teal hover:underline">
-            Sign up
+          Given to you by your class coordinator. Have your own individual
+          login instead?{" "}
+          <Link href="/login" className="font-medium text-teal hover:underline">
+            Log in
           </Link>
         </p>
       </div>
