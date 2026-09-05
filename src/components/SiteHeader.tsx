@@ -142,12 +142,6 @@ export default function SiteHeader({
             {isReady && isMember ? (
               <>
                 <Link
-                  href="/my-learning"
-                  className="rounded-full border border-teal/30 bg-teal/5 px-3 py-1.5 text-xs font-medium text-teal-dark transition-colors hover:border-teal"
-                >
-                  My Learning
-                </Link>
-                <Link
                   href="/timetable"
                   className="rounded-full border border-ink/15 px-3 py-1.5 text-xs font-medium text-ink transition-colors hover:border-teal hover:text-teal"
                 >
@@ -186,20 +180,12 @@ export default function SiteHeader({
                 </button>
               </>
             ) : (
-              <>
-                <Link
-                  href="/class-login"
-                  className="text-ink/70 transition-colors hover:text-teal"
-                >
-                  Class login
-                </Link>
-                <Link
-                  href="/login"
-                  className="rounded-full bg-teal px-4 py-2 font-medium text-porcelain transition-colors hover:bg-teal-dark"
-                >
-                  Log in
-                </Link>
-              </>
+              <Link
+                href="/login"
+                className="rounded-full bg-teal px-4 py-2 font-medium text-porcelain transition-colors hover:bg-teal-dark"
+              >
+                Log in
+              </Link>
             )}
           </div>
 
@@ -262,25 +248,8 @@ export default function SiteHeader({
               Q&amp;A
             </Link>
 
-            {!(isReady && isMember) && (
-              <Link
-                href="/class-login"
-                onClick={() => setMenuOpen(false)}
-                className="rounded-lg px-3 py-2.5 text-ink/80 transition-colors hover:bg-ink/5 hover:text-teal"
-              >
-                Class login
-              </Link>
-            )}
-
             {isReady && isMember && (
               <>
-                <Link
-                  href="/my-learning"
-                  onClick={() => setMenuOpen(false)}
-                  className="rounded-lg px-3 py-2.5 text-teal-dark transition-colors hover:bg-teal/10"
-                >
-                  My Learning
-                </Link>
                 <Link
                   href="/timetable"
                   onClick={() => setMenuOpen(false)}

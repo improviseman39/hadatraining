@@ -6,9 +6,10 @@ import { createClient } from "@/lib/supabase/client";
 /**
  * The "enter your 6-digit authenticator code" step, shared by any sign-in
  * path that can leave a session at aal1 with a verified TOTP factor still
- * outstanding — originally inline in LoginForm, now also used by
- * ClassLoginForm (whose sign-in happens server-side, so it has to check for
- * this step on mount instead of right after its own submit handler).
+ * outstanding — used by LoginForm both for a normal email/password sign-in
+ * and for a returning class-login seat (whose sign-in happens server-side,
+ * so it has to check for this step right after the server action returns
+ * rather than after its own client-side sign-in call).
  */
 export default function MfaChallenge({ onVerified }: { onVerified: () => void }) {
   const [mfaCode, setMfaCode] = useState("");

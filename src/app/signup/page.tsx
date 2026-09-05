@@ -41,14 +41,14 @@ export default async function SignupPage() {
         ) : (
           <div className="rounded-2xl border border-ink/10 bg-card p-7 text-center shadow-sm sm:p-8">
             <p className="text-sm leading-relaxed text-ink">
-              If you attended a HADA class, use the shared class login your
-              coordinator gave you instead.
+              If you attended a HADA class, log in with the shared class
+              username and password your coordinator gave you instead.
             </p>
             <Link
-              href="/class-login"
+              href="/login"
               className="mt-5 inline-flex items-center justify-center rounded-full bg-teal px-6 py-3 text-sm font-medium text-porcelain transition-colors hover:bg-teal-dark"
             >
-              Go to class login
+              Go to login
             </Link>
           </div>
         )}

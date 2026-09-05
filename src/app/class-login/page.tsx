@@ -1,34 +1,9 @@
-import Link from "next/link";
-import ClassLoginForm from "@/components/ClassLoginForm";
+import { redirect } from "next/navigation";
 
-export const metadata = {
-  title: "Class login — HADA Aesthetic Training",
-};
-
+// Class login and individual login are now the same page/form — see
+// LoginForm.tsx and login() in src/lib/actions/classLogin.ts. This route
+// stays as a redirect rather than disappearing outright, in case anyone
+// bookmarked or was sent a direct /class-login link.
 export default function ClassLoginPage() {
-  return (
-    <div className="container-page flex min-h-[calc(100vh-160px)] items-center justify-center py-16">
-      <div className="w-full max-w-md">
-        <div className="mb-8 text-center">
-          <p className="text-sm font-medium uppercase tracking-[0.2em] text-teal">
-            HADA Aesthetic Training
-          </p>
-          <h1 className="mt-3 font-serif text-3xl font-medium text-ink sm:text-4xl">
-            Class login
-          </h1>
-          <p className="mt-2 text-sm text-muted">
-            Enter the shared username and password given to your class.
-          </p>
-        </div>
-
-        <ClassLoginForm />
-
-        <p className="mt-8 text-center text-sm text-muted">
-          <Link href="/" className="font-medium text-teal hover:underline">
-            &larr; Back to home
-          </Link>
-        </p>
-      </div>
-    </div>
-  );
+  redirect("/login");
 }

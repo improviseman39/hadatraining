@@ -14,10 +14,38 @@ const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 // return statements — a "use server" file's exports are Server Actions,
 // and TypeScript's inferred union across scattered object-literal returns
 // isn't always as precise a discriminated union as it looks (callers like
-// ClassLoginForm.tsx narrowing on `"error" in result` need this to be
-// exact).
-type ClassLoginResult = { error: string } | { needsProfile: true } | { success: true };
+// LoginForm.tsx narrowing on `"error" in result` need this to be exact).
+type LoginResult = { error: string } | { needsProfile: true } | { success: true };
 type ClaimSeatResult = { error: string } | { success: true };
+
+type GroupCredential = {
+  id: string;
+  group_id: string;
+  username: string;
+  password_hash: string;
+  seat_limit: number;
+  active: boolean;
+};
+
+/**
+ * Looks up a cohort's shared credential by username only — no password
+ * check yet. This is what login() uses to decide, in the background,
+ * whether what was typed into the single identifier field is a class
+ * username or an individual email address: if a row comes back, it's a
+ * class login attempt; if not, fall through to a normal email/password
+ * sign-in. Deliberately uses the service-role client, not the per-request
+ * one: this runs before the caller is authenticated at all (a plain user
+ * request couldn't read this super_admin-only table via RLS regardless).
+ */
+async function findGroupCredential(identifier: string): Promise<GroupCredential | null> {
+  const admin = createAdminClient();
+  const { data } = await admin
+    .from("group_login_credentials")
+    .select("id, group_id, username, password_hash, seat_limit, active")
+    .eq("username", identifier.trim().toLowerCase())
+    .maybeSingle();
+  return data;
+}
 
 /**
  * Signs the current request in as `email` via a one-time admin-issued magic
@@ -46,54 +74,14 @@ async function establishSeatSession(email: string): Promise<{ error?: string }> 
 }
 
 /**
- * Looks up a cohort's shared credential and verifies it, shared by both
- * classLogin() and claimSeat() below so a fresh device can't call
- * claimSeat() directly without ever having passed the password check.
- * Deliberately uses the service-role client, not the per-request one:
- * unlike the rest of the codebase's admin actions (which prefer the
- * per-request client so RLS stays exercised — see the comment in
- * src/lib/supabase/admin.ts), this runs before the caller is authenticated
- * at all, so the per-request client couldn't read this super_admin-only
- * table regardless.
+ * The temporary shared-credential access mode, once login() has already
+ * decided this is a class login attempt with a verified password. A
+ * returning device (recognized by its device-token cookie) signs straight
+ * back into its existing seat here; a brand-new device gets told to
+ * collect a name/email first (LoginForm then calls claimSeat() with those)
+ * rather than this silently provisioning an anonymous account.
  */
-async function verifyCredential(username: string, password: string) {
-  const admin = createAdminClient();
-  const { data: credential } = await admin
-    .from("group_login_credentials")
-    .select("id, group_id, username, password_hash, seat_limit, active")
-    .eq("username", username.trim().toLowerCase())
-    .maybeSingle();
-
-  // Same message either way — don't reveal whether the username or the
-  // password was the wrong part. `ok` is a real discriminant (unlike
-  // checking for the mere presence of an `error` key, which TS doesn't
-  // treat as excluding a sibling branch that also structurally has an
-  // `error?: undefined`), so callers can narrow on it cleanly.
-  if (!credential || !credential.active || !verifyPassword(password, credential.password_hash)) {
-    return { ok: false, error: "That class username or password isn't right." } as const;
-  }
-  return { ok: true, credential } as const;
-}
-
-/**
- * The temporary shared-credential access mode: one username/password per
- * cohort group, gating entry only. A returning device (recognized by its
- * device-token cookie) signs straight back into its existing seat here; a
- * brand-new device gets told to collect a name/email first (ClassLoginForm
- * then calls claimSeat() with those) rather than this function silently
- * provisioning an anonymous account.
- */
-export async function classLogin(formData: FormData): Promise<ClassLoginResult> {
-  const username = String(formData.get("username") ?? "").trim();
-  const password = String(formData.get("password") ?? "");
-  if (!username || !password) {
-    return { error: "Enter your class username and password." };
-  }
-
-  const result = await verifyCredential(username, password);
-  if (!result.ok) return { error: result.error };
-  const { credential } = result;
-
+async function classLoginFlow(credential: GroupCredential): Promise<LoginResult> {
   const cookieStore = await cookies();
   const existingToken = cookieStore.get(DEVICE_COOKIE_NAME)?.value;
 
@@ -117,17 +105,45 @@ export async function classLogin(formData: FormData): Promise<ClassLoginResult> 
           .update({ last_seen_at: new Date().toISOString() })
           .eq("id", seat.id);
         // Don't redirect here — the caller still needs to run the same
-        // aal2 (TOTP) re-check LoginForm does after any sign-in. Returning
-        // instead of redirecting lets ClassLoginForm perform that check
-        // client-side with the fresh session this just established.
-        return { success: true as const };
+        // aal2 (TOTP) re-check LoginForm does after any sign-in.
+        return { success: true };
       }
     }
     // Cookie present but stale, revoked, or from a different cohort's
     // group — fall through and treat this as a brand-new device.
   }
 
-  return { needsProfile: true as const };
+  return { needsProfile: true };
+}
+
+/**
+ * The one login entry point for both individual accounts and shared class
+ * credentials — LoginForm no longer asks which kind of login this is; this
+ * decides in the background. If `identifier` matches a cohort's class
+ * username, it's routed through the shared-credential flow; otherwise it's
+ * treated as an ordinary email and signed in the normal way.
+ */
+export async function login(formData: FormData): Promise<LoginResult> {
+  const identifier = String(formData.get("identifier") ?? "").trim();
+  const password = String(formData.get("password") ?? "");
+  if (!identifier || !password) {
+    return { error: "Enter your email or class username, and password." };
+  }
+
+  const groupCredential = await findGroupCredential(identifier);
+  if (groupCredential) {
+    // Same message either way — don't reveal whether the username or the
+    // password was the wrong part.
+    if (!groupCredential.active || !verifyPassword(password, groupCredential.password_hash)) {
+      return { error: "That class username or password isn't right." };
+    }
+    return classLoginFlow(groupCredential);
+  }
+
+  const supabase = await createClient();
+  const { error } = await supabase.auth.signInWithPassword({ email: identifier, password });
+  if (error) return { error: error.message };
+  return { success: true };
 }
 
 /**
@@ -137,7 +153,7 @@ export async function classLogin(formData: FormData): Promise<ClassLoginResult> 
  * attendee roster to check against — this doesn't prove class attendance,
  * it just replaces total anonymity with a named, email-verified account).
  * Re-verifies the shared credential itself rather than trusting that the
- * caller already went through classLogin() in this same session.
+ * caller already went through login() in this same session.
  */
 export async function claimSeat(formData: FormData): Promise<ClaimSeatResult> {
   const username = String(formData.get("username") ?? "").trim();
@@ -148,9 +164,10 @@ export async function claimSeat(formData: FormData): Promise<ClaimSeatResult> {
   if (!fullName) return { error: "Enter your full name." };
   if (!EMAIL_RE.test(email)) return { error: "Enter a valid email address." };
 
-  const result = await verifyCredential(username, password);
-  if (!result.ok) return { error: result.error };
-  const { credential } = result;
+  const credential = await findGroupCredential(username);
+  if (!credential || !credential.active || !verifyPassword(password, credential.password_hash)) {
+    return { error: "That class username or password isn't right." };
+  }
 
   const admin = createAdminClient();
 
@@ -230,5 +247,5 @@ export async function claimSeat(formData: FormData): Promise<ClaimSeatResult> {
   // takes it from here — email isn't verified yet, so the very next
   // request lands on /onboarding/verify-email, then set-password, then
   // setup-2fa, exactly like any other new account.
-  return { success: true as const };
+  return { success: true };
 }
