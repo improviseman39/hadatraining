@@ -14,7 +14,8 @@ export default function ClassLoginForm() {
   const [step, setStep] = useState<Step>("credentials");
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
-  const [fullName, setFullName] = useState("");
+  const [firstName, setFirstName] = useState("");
+  const [surname, setSurname] = useState("");
   const [email, setEmail] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
@@ -60,6 +61,10 @@ export default function ClassLoginForm() {
     const formData = new FormData(event.currentTarget);
     formData.set("username", username);
     formData.set("password", password);
+    // Set explicitly from state rather than relying on the inputs' own
+    // name attributes — claimSeat expects one combined full_name field.
+    formData.set("full_name", `${firstName.trim()} ${surname.trim()}`.trim());
+    formData.set("email", email);
 
     startTransition(async () => {
       const result = await claimSeat(formData);
@@ -94,18 +99,33 @@ export default function ClassLoginForm() {
             your access.
           </p>
 
-          <div>
-            <label htmlFor="full-name" className="mb-2 block text-sm font-medium text-ink">
-              Full name
-            </label>
-            <input
-              id="full-name"
-              required
-              autoComplete="name"
-              value={fullName}
-              onChange={(event) => setFullName(event.target.value)}
-              className="w-full rounded-lg border border-ink/15 bg-porcelain px-4 py-2.5 text-ink placeholder:text-muted/60 focus:border-teal focus:outline-none focus:ring-2 focus:ring-teal/30"
-            />
+          <div className="grid grid-cols-1 gap-5 sm:grid-cols-2">
+            <div>
+              <label htmlFor="first-name" className="mb-2 block text-sm font-medium text-ink">
+                First name
+              </label>
+              <input
+                id="first-name"
+                required
+                autoComplete="given-name"
+                value={firstName}
+                onChange={(event) => setFirstName(event.target.value)}
+                className="w-full rounded-lg border border-ink/15 bg-porcelain px-4 py-2.5 text-ink placeholder:text-muted/60 focus:border-teal focus:outline-none focus:ring-2 focus:ring-teal/30"
+              />
+            </div>
+            <div>
+              <label htmlFor="surname" className="mb-2 block text-sm font-medium text-ink">
+                Surname
+              </label>
+              <input
+                id="surname"
+                required
+                autoComplete="family-name"
+                value={surname}
+                onChange={(event) => setSurname(event.target.value)}
+                className="w-full rounded-lg border border-ink/15 bg-porcelain px-4 py-2.5 text-ink placeholder:text-muted/60 focus:border-teal focus:outline-none focus:ring-2 focus:ring-teal/30"
+              />
+            </div>
           </div>
 
           <div>
