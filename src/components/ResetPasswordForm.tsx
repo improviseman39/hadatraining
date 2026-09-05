@@ -1,14 +1,14 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { currentUserIsSeat } from "@/lib/actions/classLogin";
 
 const MIN_LENGTH = 8;
+const RETRY_MESSAGE =
+  "Something went wrong reaching the server. Please refresh this page (the site may have just been updated) and try again.";
 
 export default function ResetPasswordForm() {
-  const router = useRouter();
   const [status, setStatus] = useState<"checking" | "mfa-required" | "ready" | "invalid" | "class-seat">(
     "checking"
   );
@@ -20,31 +20,32 @@ export default function ResetPasswordForm() {
 
   useEffect(() => {
     async function check() {
-      const supabase = createClient();
-      const {
-        data: { user },
-      } = await supabase.auth.getUser();
-      if (!user) {
+      try {
+        const supabase = createClient();
+        const {
+          data: { user },
+        } = await supabase.auth.getUser();
+        if (!user) {
+          setStatus("invalid");
+          return;
+        }
+
+        // Second layer behind requestPasswordReset()'s own check — covers a
+        // reset link reaching a seat account by some other route (e.g.
+        // triggered directly from the Supabase dashboard). A seat's whole
+        // point is one shared class password for everyone in that cohort,
+        // so it must never be allowed to end up with its own personal one.
+        if (await currentUserIsSeat()) {
+          await supabase.auth.signOut();
+          setStatus("class-seat");
+          return;
+        }
+
+        const { data: aal } = await supabase.auth.mfa.getAuthenticatorAssuranceLevel();
+        setStatus(aal && aal.nextLevel === "aal2" && aal.currentLevel !== "aal2" ? "mfa-required" : "ready");
+      } catch {
+        setError(RETRY_MESSAGE);
         setStatus("invalid");
-        return;
-      }
-
-      // Second layer behind requestPasswordReset()'s own check — covers a
-      // reset link reaching a seat account by some other route (e.g.
-      // triggered directly from the Supabase dashboard). A seat's whole
-      // point is one shared class password for everyone in that cohort,
-      // so it must never be allowed to end up with its own personal one.
-      if (await currentUserIsSeat()) {
-        await supabase.auth.signOut();
-        setStatus("class-seat");
-        return;
-      }
-
-      const { data: aal } = await supabase.auth.mfa.getAuthenticatorAssuranceLevel();
-      if (aal && aal.nextLevel === "aal2" && aal.currentLevel !== "aal2") {
-        setStatus("mfa-required");
-      } else {
-        setStatus("ready");
       }
     }
     check();
@@ -55,36 +56,39 @@ export default function ResetPasswordForm() {
     setSubmitting(true);
     setError(null);
 
-    const supabase = createClient();
-    const { data: factors } = await supabase.auth.mfa.listFactors();
-    const factorId = factors?.totp?.[0]?.id;
-    if (!factorId) {
-      setError("No authenticator app is set up on this account.");
+    try {
+      const supabase = createClient();
+      const { data: factors } = await supabase.auth.mfa.listFactors();
+      const factorId = factors?.totp?.[0]?.id;
+      if (!factorId) {
+        setError("No authenticator app is set up on this account.");
+        return;
+      }
+
+      const { data: challenge, error: challengeError } = await supabase.auth.mfa.challenge({
+        factorId,
+      });
+      if (challengeError || !challenge) {
+        setError(challengeError?.message ?? "Something went wrong. Try again.");
+        return;
+      }
+
+      const { error: verifyError } = await supabase.auth.mfa.verify({
+        factorId,
+        challengeId: challenge.id,
+        code: mfaCode,
+      });
+      if (verifyError) {
+        setError("That code didn't match. Check your app and try again.");
+        return;
+      }
+
+      setStatus("ready");
+    } catch {
+      setError(RETRY_MESSAGE);
+    } finally {
       setSubmitting(false);
-      return;
     }
-
-    const { data: challenge, error: challengeError } = await supabase.auth.mfa.challenge({
-      factorId,
-    });
-    if (challengeError || !challenge) {
-      setError(challengeError?.message ?? "Something went wrong. Try again.");
-      setSubmitting(false);
-      return;
-    }
-
-    const { error: verifyError } = await supabase.auth.mfa.verify({
-      factorId,
-      challengeId: challenge.id,
-      code: mfaCode,
-    });
-    setSubmitting(false);
-    if (verifyError) {
-      setError("That code didn't match. Check your app and try again.");
-      return;
-    }
-
-    setStatus("ready");
   }
 
   async function handlePasswordSubmit(event: React.FormEvent<HTMLFormElement>) {
@@ -101,16 +105,23 @@ export default function ResetPasswordForm() {
     }
 
     setSubmitting(true);
-    const supabase = createClient();
-    const { error: updateError } = await supabase.auth.updateUser({ password });
-    setSubmitting(false);
-    if (updateError) {
-      setError(updateError.message);
-      return;
-    }
+    try {
+      const supabase = createClient();
+      const { error: updateError } = await supabase.auth.updateUser({ password });
+      if (updateError) {
+        setError(updateError.message);
+        return;
+      }
 
-    router.push("/");
-    router.refresh();
+      // Full navigation so the next page is guaranteed to load this exact
+      // request's current deployment rather than whatever version this
+      // tab's JS bundle was on.
+      window.location.href = "/";
+    } catch {
+      setError(RETRY_MESSAGE);
+    } finally {
+      setSubmitting(false);
+    }
   }
 
   if (status === "checking") {
@@ -143,7 +154,7 @@ export default function ResetPasswordForm() {
     return (
       <div className="rounded-2xl border border-ink/10 bg-card p-7 text-center shadow-sm sm:p-8">
         <p className="text-sm text-terracotta">
-          This reset link is invalid or has expired. Request a new one from the{" "}
+          {error ?? "This reset link is invalid or has expired."} Request a new one from the{" "}
           <a href="/forgot-password" className="font-medium text-teal hover:underline">
             forgot password
           </a>{" "}

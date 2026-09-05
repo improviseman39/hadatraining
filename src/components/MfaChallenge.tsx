@@ -21,36 +21,39 @@ export default function MfaChallenge({ onVerified }: { onVerified: () => void })
     setSubmitting(true);
     setError(null);
 
-    const supabase = createClient();
-    const { data: factors } = await supabase.auth.mfa.listFactors();
-    const factorId = factors?.totp?.[0]?.id;
-    if (!factorId) {
-      setError("No authenticator app is set up on this account.");
-      setSubmitting(false);
-      return;
-    }
+    try {
+      const supabase = createClient();
+      const { data: factors } = await supabase.auth.mfa.listFactors();
+      const factorId = factors?.totp?.[0]?.id;
+      if (!factorId) {
+        setError("No authenticator app is set up on this account.");
+        return;
+      }
 
-    const { data: challenge, error: challengeError } = await supabase.auth.mfa.challenge({
-      factorId,
-    });
-    if (challengeError || !challenge) {
-      setError(challengeError?.message ?? "Something went wrong. Try again.");
-      setSubmitting(false);
-      return;
-    }
+      const { data: challenge, error: challengeError } = await supabase.auth.mfa.challenge({
+        factorId,
+      });
+      if (challengeError || !challenge) {
+        setError(challengeError?.message ?? "Something went wrong. Try again.");
+        return;
+      }
 
-    const { error: verifyError } = await supabase.auth.mfa.verify({
-      factorId,
-      challengeId: challenge.id,
-      code: mfaCode,
-    });
-    if (verifyError) {
-      setError("That code didn't match. Check your app and try again.");
-      setSubmitting(false);
-      return;
-    }
+      const { error: verifyError } = await supabase.auth.mfa.verify({
+        factorId,
+        challengeId: challenge.id,
+        code: mfaCode,
+      });
+      if (verifyError) {
+        setError("That code didn't match. Check your app and try again.");
+        return;
+      }
 
-    onVerified();
+      onVerified();
+    } catch {
+      setError("Something went wrong reaching the server. Refresh this page and try again.");
+    } finally {
+      setSubmitting(false);
+    }
   }
 
   return (

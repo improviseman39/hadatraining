@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useState, useTransition } from "react";
-import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 
 const AUTH_APPS = [
@@ -64,7 +63,6 @@ function AuthAppIcon({ name, color }: { name: string; color: string }) {
 }
 
 export default function Setup2faForm() {
-  const router = useRouter();
   const [status, setStatus] = useState<"loading" | "ready" | "error">("loading");
   const [qrCode, setQrCode] = useState("");
   const [secret, setSecret] = useState("");
@@ -75,30 +73,35 @@ export default function Setup2faForm() {
 
   useEffect(() => {
     async function setup() {
-      const supabase = createClient();
+      try {
+        const supabase = createClient();
 
-      // Clean up any leftover unverified factor from a previous attempt
-      // (e.g. the page was reloaded mid-setup) so enrollments don't pile up.
-      const { data: existing } = await supabase.auth.mfa.listFactors();
-      const unverified = existing?.all?.find(
-        (f) => f.factor_type === "totp" && f.status === "unverified"
-      );
-      if (unverified) {
-        await supabase.auth.mfa.unenroll({ factorId: unverified.id });
-      }
+        // Clean up any leftover unverified factor from a previous attempt
+        // (e.g. the page was reloaded mid-setup) so enrollments don't pile up.
+        const { data: existing } = await supabase.auth.mfa.listFactors();
+        const unverified = existing?.all?.find(
+          (f) => f.factor_type === "totp" && f.status === "unverified"
+        );
+        if (unverified) {
+          await supabase.auth.mfa.unenroll({ factorId: unverified.id });
+        }
 
-      const { data, error: enrollError } = await supabase.auth.mfa.enroll({
-        factorType: "totp",
-      });
-      if (enrollError || !data) {
-        setError(enrollError?.message ?? "Couldn't start 2FA setup.");
+        const { data, error: enrollError } = await supabase.auth.mfa.enroll({
+          factorType: "totp",
+        });
+        if (enrollError || !data) {
+          setError(enrollError?.message ?? "Couldn't start 2FA setup.");
+          setStatus("error");
+          return;
+        }
+        setQrCode(data.totp.qr_code);
+        setSecret(data.totp.secret);
+        setFactorId(data.id);
+        setStatus("ready");
+      } catch {
+        setError("Couldn't reach the server to start 2FA setup. Refresh this page and try again.");
         setStatus("error");
-        return;
       }
-      setQrCode(data.totp.qr_code);
-      setSecret(data.totp.secret);
-      setFactorId(data.id);
-      setStatus("ready");
     }
     setup();
   }, []);
@@ -108,27 +111,32 @@ export default function Setup2faForm() {
     setError(null);
 
     startTransition(async () => {
-      const supabase = createClient();
-      const { data: challenge, error: challengeError } = await supabase.auth.mfa.challenge({
-        factorId,
-      });
-      if (challengeError || !challenge) {
-        setError(challengeError?.message ?? "Something went wrong. Try again.");
-        return;
-      }
+      try {
+        const supabase = createClient();
+        const { data: challenge, error: challengeError } = await supabase.auth.mfa.challenge({
+          factorId,
+        });
+        if (challengeError || !challenge) {
+          setError(challengeError?.message ?? "Something went wrong. Try again.");
+          return;
+        }
 
-      const { error: verifyError } = await supabase.auth.mfa.verify({
-        factorId,
-        challengeId: challenge.id,
-        code,
-      });
-      if (verifyError) {
-        setError("That code didn't match. Check your app and try again.");
-        return;
-      }
+        const { error: verifyError } = await supabase.auth.mfa.verify({
+          factorId,
+          challengeId: challenge.id,
+          code,
+        });
+        if (verifyError) {
+          setError("That code didn't match. Check your app and try again.");
+          return;
+        }
 
-      router.push("/");
-      router.refresh();
+        // Full navigation so this lands on the current deployment's Home
+        // page rather than whatever version this tab's JS bundle was on.
+        window.location.href = "/";
+      } catch {
+        setError("Something went wrong reaching the server. Refresh this page and try again.");
+      }
     });
   }
 

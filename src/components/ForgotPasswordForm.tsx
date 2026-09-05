@@ -19,16 +19,22 @@ export default function ForgotPasswordForm() {
     formData.set("redirect_to", `${window.location.origin}/auth/callback?next=/reset-password`);
 
     startTransition(async () => {
-      const result = await requestPasswordReset(formData);
-      if ("error" in result) {
-        setError(result.error);
-        return;
+      try {
+        const result = await requestPasswordReset(formData);
+        if ("error" in result) {
+          setError(result.error);
+          return;
+        }
+        if ("isClassSeat" in result) {
+          setIsClassSeat(true);
+          return;
+        }
+        setSent(true);
+      } catch {
+        setError(
+          "Something went wrong reaching the server. Please refresh this page (the site may have just been updated) and try again."
+        );
       }
-      if ("isClassSeat" in result) {
-        setIsClassSeat(true);
-        return;
-      }
-      setSent(true);
     });
   }
 

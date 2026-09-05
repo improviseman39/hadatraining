@@ -1,7 +1,6 @@
 "use client";
 
 import { useState, useTransition } from "react";
-import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { login, claimSeat } from "@/lib/actions/classLogin";
 import { createClient } from "@/lib/supabase/client";
@@ -12,8 +11,18 @@ type Step = "credentials" | "profile" | "mfa";
 // After this long with no response, reassure the person it's still
 // working rather than leaving a bare "Logging in…" that looks frozen —
 // this can be slow right after a fresh deploy (serverless cold start),
-// even though it always completes.
+// even though it usually completes.
 const SLOW_RESPONSE_MS = 4000;
+
+// A network/server-action call can fail outright rather than just being
+// slow — most commonly right after a new deploy, when a page that's been
+// open since before the deploy tries to call a server action that no
+// longer matches what's currently running. Previously nothing caught this,
+// so the promise rejected unhandled and the button stayed on "Logging
+// in…"/"Setting up…" forever with no error and no way to recover except
+// guessing to refresh.
+const RETRY_MESSAGE =
+  "Something went wrong reaching the server. Please refresh this page (the site may have just been updated) and try again.";
 
 /**
  * One login form for everyone — an individual email+password and a class's
@@ -24,7 +33,6 @@ const SLOW_RESPONSE_MS = 4000;
  * seat exists, or straight through.
  */
 export default function LoginForm({ signupEnabled }: { signupEnabled: boolean }) {
-  const router = useRouter();
   const [step, setStep] = useState<Step>("credentials");
   const [identifier, setIdentifier] = useState("");
   const [password, setPassword] = useState("");
@@ -47,8 +55,10 @@ export default function LoginForm({ signupEnabled }: { signupEnabled: boolean })
       setStep("mfa");
       return;
     }
-    router.push("/");
-    router.refresh();
+    // Full navigation (not router.push) so the next page is guaranteed to
+    // load this exact request's current deployment rather than whatever
+    // version this tab's JS bundle was on.
+    window.location.href = "/";
   }
 
   function handleCredentialsSubmit(event: React.FormEvent<HTMLFormElement>) {
@@ -59,17 +69,22 @@ export default function LoginForm({ signupEnabled }: { signupEnabled: boolean })
     const slowTimer = window.setTimeout(() => setSlow(true), SLOW_RESPONSE_MS);
 
     startTransition(async () => {
-      const result = await login(formData);
-      window.clearTimeout(slowTimer);
-      if ("error" in result) {
-        setError(result.error);
-        return;
+      try {
+        const result = await login(formData);
+        window.clearTimeout(slowTimer);
+        if ("error" in result) {
+          setError(result.error);
+          return;
+        }
+        if ("needsProfile" in result) {
+          setStep("profile");
+          return;
+        }
+        await afterSignIn();
+      } catch {
+        window.clearTimeout(slowTimer);
+        setError(RETRY_MESSAGE);
       }
-      if ("needsProfile" in result) {
-        setStep("profile");
-        return;
-      }
-      await afterSignIn();
     });
   }
 
@@ -85,25 +100,23 @@ export default function LoginForm({ signupEnabled }: { signupEnabled: boolean })
     const slowTimer = window.setTimeout(() => setSlow(true), SLOW_RESPONSE_MS);
 
     startTransition(async () => {
-      const result = await claimSeat(formData);
-      window.clearTimeout(slowTimer);
-      if ("error" in result) {
-        setError(result.error);
-        return;
+      try {
+        const result = await claimSeat(formData);
+        window.clearTimeout(slowTimer);
+        if ("error" in result) {
+          setError(result.error);
+          return;
+        }
+        await afterSignIn();
+      } catch {
+        window.clearTimeout(slowTimer);
+        setError(RETRY_MESSAGE);
       }
-      await afterSignIn();
     });
   }
 
   if (step === "mfa") {
-    return (
-      <MfaChallenge
-        onVerified={() => {
-          router.push("/");
-          router.refresh();
-        }}
-      />
-    );
+    return <MfaChallenge onVerified={() => { window.location.href = "/"; }} />;
   }
 
   if (step === "profile") {

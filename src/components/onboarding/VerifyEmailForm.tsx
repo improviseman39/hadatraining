@@ -1,17 +1,24 @@
 "use client";
 
 import { useEffect, useState, useTransition } from "react";
-import { useRouter } from "next/navigation";
 import { sendVerificationCode, verifyCode } from "@/lib/actions/onboarding";
 
 // After this long with no response, reassure the person it's still
 // working rather than leaving a bare "Verifying…" that looks frozen —
 // this step can be slow right after a fresh deploy (serverless cold
-// start), even though it always completes.
+// start), even though it usually completes.
 const SLOW_RESPONSE_MS = 4000;
 
+// A network/server-action call can fail outright rather than just being
+// slow — most commonly right after a new deploy, when a page that's been
+// open since before the deploy tries to call a server action that no
+// longer matches what's currently running. Previously nothing caught this,
+// so the promise rejected unhandled and the button stayed on "Verifying…"
+// forever with no error and no way to recover except guessing to refresh.
+const RETRY_MESSAGE =
+  "Something went wrong reaching the server. Please refresh this page (the site may have just been updated) and try again.";
+
 export default function VerifyEmailForm() {
-  const router = useRouter();
   const [code, setCode] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [sentStatus, setSentStatus] = useState<"sending" | "sent" | "error">("sending");
@@ -20,8 +27,12 @@ export default function VerifyEmailForm() {
 
   useEffect(() => {
     startTransition(async () => {
-      const result = await sendVerificationCode();
-      setSentStatus(result?.error ? "error" : "sent");
+      try {
+        const result = await sendVerificationCode();
+        setSentStatus(result?.error ? "error" : "sent");
+      } catch {
+        setSentStatus("error");
+      }
     });
     // Only send once, on mount — resend is a separate explicit action below.
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -31,8 +42,12 @@ export default function VerifyEmailForm() {
     setError(null);
     setSentStatus("sending");
     startTransition(async () => {
-      const result = await sendVerificationCode();
-      setSentStatus(result?.error ? "error" : "sent");
+      try {
+        const result = await sendVerificationCode();
+        setSentStatus(result?.error ? "error" : "sent");
+      } catch {
+        setSentStatus("error");
+      }
     });
   }
 
@@ -45,19 +60,26 @@ export default function VerifyEmailForm() {
     const slowTimer = window.setTimeout(() => setSlow(true), SLOW_RESPONSE_MS);
 
     startTransition(async () => {
-      const result = await verifyCode(formData);
-      window.clearTimeout(slowTimer);
-      if (result?.error) {
-        setError(result.error);
-        return;
+      try {
+        const result = await verifyCode(formData);
+        window.clearTimeout(slowTimer);
+        if (result?.error) {
+          setError(result.error);
+          return;
+        }
+        // Not a hardcoded "/onboarding/set-password" — self-signup users
+        // already set their real password during signup (must_change_password
+        // is already false for them), so sending everyone to that step
+        // unconditionally re-asked for a password they'd just chosen. A
+        // full navigation (not router.push) to "/" so the next page is
+        // guaranteed to load this exact request's current deployment
+        // rather than whatever version this tab's JS bundle was on, and
+        // lets the middleware gate resolve whatever's actually next.
+        window.location.href = "/";
+      } catch {
+        window.clearTimeout(slowTimer);
+        setError(RETRY_MESSAGE);
       }
-      // Not a hardcoded "/onboarding/set-password" — self-signup users
-      // already set their real password during signup (must_change_password
-      // is already false for them), so sending everyone to that step
-      // unconditionally re-asked for a password they'd just chosen. Redirect
-      // to "/" and let the middleware gate resolve whatever's actually next.
-      router.push("/");
-      router.refresh();
     });
   }
 
