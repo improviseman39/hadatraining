@@ -9,6 +9,12 @@ import MfaChallenge from "@/components/MfaChallenge";
 
 type Step = "credentials" | "profile" | "mfa";
 
+// After this long with no response, reassure the person it's still
+// working rather than leaving a bare "Logging in…" that looks frozen —
+// this can be slow right after a fresh deploy (serverless cold start),
+// even though it always completes.
+const SLOW_RESPONSE_MS = 4000;
+
 /**
  * One login form for everyone — an individual email+password and a class's
  * shared username+password both go through the same identifier/password
@@ -26,6 +32,7 @@ export default function LoginForm({ signupEnabled }: { signupEnabled: boolean })
   const [surname, setSurname] = useState("");
   const [email, setEmail] = useState("");
   const [error, setError] = useState<string | null>(null);
+  const [slow, setSlow] = useState(false);
   const [pending, startTransition] = useTransition();
 
   async function afterSignIn() {
@@ -47,10 +54,13 @@ export default function LoginForm({ signupEnabled }: { signupEnabled: boolean })
   function handleCredentialsSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setError(null);
+    setSlow(false);
     const formData = new FormData(event.currentTarget);
+    const slowTimer = window.setTimeout(() => setSlow(true), SLOW_RESPONSE_MS);
 
     startTransition(async () => {
       const result = await login(formData);
+      window.clearTimeout(slowTimer);
       if ("error" in result) {
         setError(result.error);
         return;
@@ -66,14 +76,17 @@ export default function LoginForm({ signupEnabled }: { signupEnabled: boolean })
   function handleProfileSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setError(null);
+    setSlow(false);
     const formData = new FormData(event.currentTarget);
     formData.set("username", identifier);
     formData.set("password", password);
     formData.set("full_name", `${firstName.trim()} ${surname.trim()}`.trim());
     formData.set("email", email);
+    const slowTimer = window.setTimeout(() => setSlow(true), SLOW_RESPONSE_MS);
 
     startTransition(async () => {
       const result = await claimSeat(formData);
+      window.clearTimeout(slowTimer);
       if ("error" in result) {
         setError(result.error);
         return;
@@ -153,6 +166,13 @@ export default function LoginForm({ signupEnabled }: { signupEnabled: boolean })
             </p>
           </div>
 
+          {pending && slow && (
+            <p className="text-sm text-muted">
+              Still working — this can take a little longer than usual right
+              after an update to the site. No need to refresh or resubmit.
+            </p>
+          )}
+
           {error && (
             <p role="alert" className="text-sm font-medium text-terracotta">
               {error}
@@ -164,7 +184,7 @@ export default function LoginForm({ signupEnabled }: { signupEnabled: boolean })
             disabled={pending}
             className="w-full rounded-full bg-ink px-6 py-3 text-sm font-medium text-porcelain transition-colors hover:bg-teal disabled:opacity-70"
           >
-            {pending ? "Setting up…" : "Continue"}
+            {pending ? (slow ? "Still setting up…" : "Setting up…") : "Continue"}
           </button>
         </div>
       </form>
@@ -210,6 +230,13 @@ export default function LoginForm({ signupEnabled }: { signupEnabled: boolean })
           />
         </div>
 
+        {pending && slow && (
+          <p className="text-sm text-muted">
+            Still working — this can take a little longer than usual right
+            after an update to the site. No need to refresh or resubmit.
+          </p>
+        )}
+
         {error && (
           <p role="alert" className="text-sm font-medium text-terracotta">
             {error}
@@ -221,7 +248,7 @@ export default function LoginForm({ signupEnabled }: { signupEnabled: boolean })
           disabled={pending}
           className="mt-2 w-full rounded-full bg-ink px-6 py-3 text-sm font-medium text-porcelain transition-colors hover:bg-teal disabled:opacity-70"
         >
-          {pending ? "Logging in…" : "Log in"}
+          {pending ? (slow ? "Still logging in…" : "Logging in…") : "Log in"}
         </button>
 
         {signupEnabled && (

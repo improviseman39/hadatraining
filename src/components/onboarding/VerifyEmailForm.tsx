@@ -4,11 +4,18 @@ import { useEffect, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { sendVerificationCode, verifyCode } from "@/lib/actions/onboarding";
 
+// After this long with no response, reassure the person it's still
+// working rather than leaving a bare "Verifying…" that looks frozen —
+// this step can be slow right after a fresh deploy (serverless cold
+// start), even though it always completes.
+const SLOW_RESPONSE_MS = 4000;
+
 export default function VerifyEmailForm() {
   const router = useRouter();
   const [code, setCode] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [sentStatus, setSentStatus] = useState<"sending" | "sent" | "error">("sending");
+  const [slow, setSlow] = useState(false);
   const [pending, startTransition] = useTransition();
 
   useEffect(() => {
@@ -32,11 +39,14 @@ export default function VerifyEmailForm() {
   function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setError(null);
+    setSlow(false);
     const formData = new FormData();
     formData.set("code", code);
+    const slowTimer = window.setTimeout(() => setSlow(true), SLOW_RESPONSE_MS);
 
     startTransition(async () => {
       const result = await verifyCode(formData);
+      window.clearTimeout(slowTimer);
       if (result?.error) {
         setError(result.error);
         return;
@@ -88,6 +98,13 @@ export default function VerifyEmailForm() {
           </p>
         )}
 
+        {pending && slow && (
+          <p className="text-sm text-muted">
+            Still working — this can take a little longer than usual right
+            after an update to the site. No need to refresh or resubmit.
+          </p>
+        )}
+
         {error && (
           <p role="alert" className="text-sm font-medium text-terracotta">
             {error}
@@ -99,7 +116,7 @@ export default function VerifyEmailForm() {
           disabled={pending || code.length !== 6}
           className="w-full rounded-full bg-ink px-6 py-3 text-sm font-medium text-porcelain transition-colors hover:bg-teal disabled:opacity-50"
         >
-          {pending ? "Verifying…" : "Verify"}
+          {pending ? (slow ? "Still verifying…" : "Verifying…") : "Verify"}
         </button>
 
         <button
