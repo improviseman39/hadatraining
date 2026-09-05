@@ -95,6 +95,7 @@ export default async function AdminUsersPage() {
       <CreateUserForm />
 
       <div className="overflow-hidden rounded-2xl border border-ink/10 bg-card">
+        <div className="overflow-x-auto">
         <table className="w-full text-left text-sm">
           <thead className="border-b border-ink/10 bg-porcelain/60 text-xs font-medium uppercase tracking-wide text-muted">
             <tr>
@@ -135,6 +136,7 @@ export default async function AdminUsersPage() {
             })}
           </tbody>
         </table>
+        </div>
       </div>
     </div>
   );

@@ -110,7 +110,12 @@ export async function createUserDirect(formData: FormData) {
     user_metadata: { role, invited_by: caller.id },
   });
 
-  if (error) return { error: error.message };
+  if (error) {
+    if (/already been registered|already exists/i.test(error.message)) {
+      return { error: "An account with that email already exists." };
+    }
+    return { error: error.message };
+  }
 
   // Deliberately doesn't include the password — that stays out of email
   // entirely and is communicated by the admin through whatever channel
