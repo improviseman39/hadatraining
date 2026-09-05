@@ -20,7 +20,9 @@ export default async function AdminUsersPage() {
     await Promise.all([
       supabase
         .from("profiles")
-        .select("id, email, role, created_at, group_id, invited_by_profile:profiles!invited_by(email)")
+        .select(
+          "id, email, full_name, role, created_at, group_id, invited_by_profile:profiles!invited_by(email)"
+        )
         .order("created_at"),
       supabase.from("groups").select("id, name").order("name"),
       supabase
@@ -120,6 +122,7 @@ export default async function AdminUsersPage() {
                   profile={{
                     id: profile.id,
                     email: profile.email,
+                    full_name: profile.full_name,
                     role: profile.role,
                     created_at: profile.created_at,
                     group_id: profile.group_id,

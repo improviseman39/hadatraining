@@ -12,6 +12,7 @@ import {
 type Profile = {
   id: string;
   email: string;
+  full_name: string | null;
   role: "user" | "design" | "admin" | "super_admin";
   created_at: string;
   invited_by_email: string | null;
@@ -97,6 +98,9 @@ export default function UserRow({
       <td className="px-4 py-3 font-medium text-ink">
         {profile.email}
         {isSelf && <span className="ml-2 text-xs text-muted">(you)</span>}
+        {profile.full_name && (
+          <span className="block text-xs font-normal text-muted">{profile.full_name}</span>
+        )}
       </td>
       <td className="px-4 py-3">
         <select

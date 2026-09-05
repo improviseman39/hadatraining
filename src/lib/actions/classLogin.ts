@@ -8,17 +8,25 @@ import { verifyPassword, hashToken } from "@/lib/classCredentials";
 
 const DEVICE_COOKIE_NAME = "hada_seat";
 const DEVICE_COOKIE_MAX_AGE_SECONDS = 60 * 60 * 24 * 365; // ~1 year
-const SEAT_EMAIL_DOMAIN = "members.hadatraining.internal";
+const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+// Explicit result types rather than relying on inference across many
+// return statements — a "use server" file's exports are Server Actions,
+// and TypeScript's inferred union across scattered object-literal returns
+// isn't always as precise a discriminated union as it looks (callers like
+// ClassLoginForm.tsx narrowing on `"error" in result` need this to be
+// exact).
+type ClassLoginResult = { error: string } | { needsProfile: true } | { success: true };
+type ClaimSeatResult = { error: string } | { success: true };
 
 /**
  * Signs the current request in as `email` via a one-time admin-issued magic
  * link, instead of a password — used for a returning device claiming its
- * existing seat, since a seat's real sign-in password is never stored
- * anywhere (see classLogin() below) and this is the standard Supabase
- * pattern for "the server vouches this specific account, no password
- * involved." generateLink() needs the service-role client; verifyOtp()
- * needs the per-request client so it can write the resulting session
- * cookies onto this response.
+ * existing seat, since a seat's real password is chosen by the person
+ * themselves during onboarding (see claimSeat() below) and this code never
+ * sees or stores it. generateLink() needs the service-role client;
+ * verifyOtp() needs the per-request client so it can write the resulting
+ * session cookies onto this response.
  */
 async function establishSeatSession(email: string): Promise<{ error?: string }> {
   const admin = createAdminClient();
@@ -38,48 +46,59 @@ async function establishSeatSession(email: string): Promise<{ error?: string }> 
 }
 
 /**
- * The temporary shared-credential access mode: one username/password per
- * cohort group, gating entry only — every browser that gets through it gets
- * its own ordinary auth.users "seat" behind the scenes (see the migration
- * comment in 0034_group_class_login.sql), so progress/bookings/2FA all work
- * exactly like any individually-invited account.
- *
- * Deliberately uses the service-role client (not the per-request one) for
- * every read/write here, including group_login_credentials/group_seats/
- * profiles — unlike the rest of the codebase's admin actions, which prefer
- * the per-request client so RLS stays exercised (see the comment in
- * src/lib/supabase/admin.ts). That convention assumes an authenticated
- * caller; this function's caller is, by definition, not yet authenticated
- * at all when it runs, so the per-request client couldn't read these
- * super_admin-only tables regardless. The service-role client is the only
- * option pre-authentication, same reasoning as inviteUserByEmail/createUser
- * elsewhere in the admin actions.
+ * Looks up a cohort's shared credential and verifies it, shared by both
+ * classLogin() and claimSeat() below so a fresh device can't call
+ * claimSeat() directly without ever having passed the password check.
+ * Deliberately uses the service-role client, not the per-request one:
+ * unlike the rest of the codebase's admin actions (which prefer the
+ * per-request client so RLS stays exercised — see the comment in
+ * src/lib/supabase/admin.ts), this runs before the caller is authenticated
+ * at all, so the per-request client couldn't read this super_admin-only
+ * table regardless.
  */
-export async function classLogin(formData: FormData) {
-  const username = String(formData.get("username") ?? "").trim().toLowerCase();
+async function verifyCredential(username: string, password: string) {
+  const admin = createAdminClient();
+  const { data: credential } = await admin
+    .from("group_login_credentials")
+    .select("id, group_id, username, password_hash, seat_limit, active")
+    .eq("username", username.trim().toLowerCase())
+    .maybeSingle();
+
+  // Same message either way — don't reveal whether the username or the
+  // password was the wrong part. `ok` is a real discriminant (unlike
+  // checking for the mere presence of an `error` key, which TS doesn't
+  // treat as excluding a sibling branch that also structurally has an
+  // `error?: undefined`), so callers can narrow on it cleanly.
+  if (!credential || !credential.active || !verifyPassword(password, credential.password_hash)) {
+    return { ok: false, error: "That class username or password isn't right." } as const;
+  }
+  return { ok: true, credential } as const;
+}
+
+/**
+ * The temporary shared-credential access mode: one username/password per
+ * cohort group, gating entry only. A returning device (recognized by its
+ * device-token cookie) signs straight back into its existing seat here; a
+ * brand-new device gets told to collect a name/email first (ClassLoginForm
+ * then calls claimSeat() with those) rather than this function silently
+ * provisioning an anonymous account.
+ */
+export async function classLogin(formData: FormData): Promise<ClassLoginResult> {
+  const username = String(formData.get("username") ?? "").trim();
   const password = String(formData.get("password") ?? "");
   if (!username || !password) {
     return { error: "Enter your class username and password." };
   }
 
-  const admin = createAdminClient();
-
-  const { data: credential } = await admin
-    .from("group_login_credentials")
-    .select("id, group_id, username, password_hash, seat_limit, active")
-    .eq("username", username)
-    .maybeSingle();
-
-  // Same message either way — don't reveal whether the username or the
-  // password was the wrong part.
-  const genericError = { error: "That class username or password isn't right." };
-  if (!credential || !credential.active) return genericError;
-  if (!verifyPassword(password, credential.password_hash)) return genericError;
+  const result = await verifyCredential(username, password);
+  if (!result.ok) return { error: result.error };
+  const { credential } = result;
 
   const cookieStore = await cookies();
   const existingToken = cookieStore.get(DEVICE_COOKIE_NAME)?.value;
 
   if (existingToken) {
+    const admin = createAdminClient();
     const { data: seat } = await admin
       .from("group_seats")
       .select("id, user_id")
@@ -91,8 +110,8 @@ export async function classLogin(formData: FormData) {
     if (seat) {
       const { data: authUser } = await admin.auth.admin.getUserById(seat.user_id);
       if (authUser?.user?.email) {
-        const result = await establishSeatSession(authUser.user.email);
-        if (result.error) return { error: result.error };
+        const signInResult = await establishSeatSession(authUser.user.email);
+        if (signInResult.error) return { error: signInResult.error };
         await admin
           .from("group_seats")
           .update({ last_seen_at: new Date().toISOString() })
@@ -105,9 +124,35 @@ export async function classLogin(formData: FormData) {
       }
     }
     // Cookie present but stale, revoked, or from a different cohort's
-    // group — fall through and claim a fresh seat below, same as a
-    // brand-new device.
+    // group — fall through and treat this as a brand-new device.
   }
+
+  return { needsProfile: true as const };
+}
+
+/**
+ * Completes a brand-new device's first login: collects a real name and
+ * email instead of provisioning an anonymous seat, so there's at least an
+ * auditable record of who's using each of a cohort's slots (there's no
+ * attendee roster to check against — this doesn't prove class attendance,
+ * it just replaces total anonymity with a named, email-verified account).
+ * Re-verifies the shared credential itself rather than trusting that the
+ * caller already went through classLogin() in this same session.
+ */
+export async function claimSeat(formData: FormData): Promise<ClaimSeatResult> {
+  const username = String(formData.get("username") ?? "").trim();
+  const password = String(formData.get("password") ?? "");
+  const fullName = String(formData.get("full_name") ?? "").trim();
+  const email = String(formData.get("email") ?? "").trim().toLowerCase();
+
+  if (!fullName) return { error: "Enter your full name." };
+  if (!EMAIL_RE.test(email)) return { error: "Enter a valid email address." };
+
+  const result = await verifyCredential(username, password);
+  if (!result.ok) return { error: result.error };
+  const { credential } = result;
+
+  const admin = createAdminClient();
 
   const { count: liveSeatCount } = await admin
     .from("group_seats")
@@ -119,42 +164,42 @@ export async function classLogin(formData: FormData) {
     return { error: "This class's access is full — ask your coordinator." };
   }
 
-  // A one-time-use password for this account-creation call only — it's
-  // never written anywhere. Every sign-in from here on (including the one
-  // a few lines down) goes through signInWithPassword/establishSeatSession,
-  // so there's no persisted seat password an attacker could ever target.
+  // A one-time-use password for this creation call only — the person sets
+  // their own real password a moment from now, via the existing
+  // /onboarding/set-password step (must_change_password defaults true on a
+  // new profile row, same as any admin-created account), so this value is
+  // never seen or reused after the signInWithPassword call below.
   const throwawayPassword = randomBytes(24).toString("base64url");
-  const seatEmail = `seat-${randomBytes(12).toString("hex")}@${SEAT_EMAIL_DOMAIN}`;
 
   const { data: created, error: createError } = await admin.auth.admin.createUser({
-    email: seatEmail,
+    email,
     password: throwawayPassword,
     // Must be true — see the identical comment in admin/users/actions.ts:
     // GoTrue hard-blocks sign-in for unconfirmed accounts regardless of
-    // config.
+    // config. Real proof of owning this inbox is still enforced by the
+    // existing email_verified_at / OTP onboarding step right after this,
+    // which is deliberately left to run (unlike the old synthetic-email
+    // version of this flow) since the email is now a real one worth
+    // verifying.
     email_confirm: true,
-    user_metadata: { role: "user" },
+    user_metadata: { role: "user", full_name: fullName },
   });
   if (createError || !created?.user) {
+    if (/already been registered|already exists/i.test(createError?.message ?? "")) {
+      return {
+        error: "That email already has an account — log in normally instead of using the class code.",
+      };
+    }
     return { error: createError?.message ?? "Couldn't set up your access. Try again." };
   }
 
-  // Skip the parts of onboarding that don't apply to a synthetic seat
-  // identity — there's no real inbox behind seatEmail to verify, and no one
-  // ever sees (let alone needs to change) the throwaway password above.
-  // mfa_enrolled is deliberately left alone: the existing onboarding
-  // middleware (src/lib/supabase/middleware.ts) already routes any account
-  // without a verified factor straight to /onboarding/setup-2fa on its own,
-  // so a seat goes through exactly the same 2FA enrollment as any other
-  // account without this code needing to know that path itself.
-  await admin
-    .from("profiles")
-    .update({
-      must_change_password: false,
-      email_verified_at: new Date().toISOString(),
-      group_id: credential.group_id,
-    })
-    .eq("id", created.user.id);
+  // Only group_id needs setting explicitly — full_name came through
+  // user_metadata and is already populated by the handle_new_user()
+  // trigger (0020_self_signup_profile_fields.sql), and
+  // must_change_password/email_verified_at are left at their normal
+  // defaults so this account goes through the same onboarding chain
+  // (verify email, then set password, then set up 2FA) as any other.
+  await admin.from("profiles").update({ group_id: credential.group_id }).eq("id", created.user.id);
 
   const deviceToken = randomBytes(32).toString("hex");
   await admin.from("group_seats").insert({
@@ -163,6 +208,7 @@ export async function classLogin(formData: FormData) {
     device_token_hash: hashToken(deviceToken),
   });
 
+  const cookieStore = await cookies();
   cookieStore.set(DEVICE_COOKIE_NAME, deviceToken, {
     httpOnly: true,
     secure: process.env.NODE_ENV === "production",
@@ -173,16 +219,16 @@ export async function classLogin(formData: FormData) {
 
   const supabase = await createClient();
   const { error: signInError } = await supabase.auth.signInWithPassword({
-    email: seatEmail,
+    email,
     password: throwawayPassword,
   });
   if (signInError) {
     return { error: "Access was set up, but couldn't sign you in automatically. Try again." };
   }
 
-  // A brand-new seat has no MFA factor enrolled yet, so the aal2 check
-  // ClassLoginForm runs next is a no-op — the existing onboarding
-  // middleware (src/lib/supabase/middleware.ts) routes it to
-  // /onboarding/setup-2fa on the very next request regardless.
+  // The existing onboarding middleware (src/lib/supabase/middleware.ts)
+  // takes it from here — email isn't verified yet, so the very next
+  // request lands on /onboarding/verify-email, then set-password, then
+  // setup-2fa, exactly like any other new account.
   return { success: true as const };
 }
