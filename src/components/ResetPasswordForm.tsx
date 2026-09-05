@@ -3,12 +3,13 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
+import { currentUserIsSeat } from "@/lib/actions/classLogin";
 
 const MIN_LENGTH = 8;
 
 export default function ResetPasswordForm() {
   const router = useRouter();
-  const [status, setStatus] = useState<"checking" | "mfa-required" | "ready" | "invalid">(
+  const [status, setStatus] = useState<"checking" | "mfa-required" | "ready" | "invalid" | "class-seat">(
     "checking"
   );
   const [mfaCode, setMfaCode] = useState("");
@@ -25,6 +26,17 @@ export default function ResetPasswordForm() {
       } = await supabase.auth.getUser();
       if (!user) {
         setStatus("invalid");
+        return;
+      }
+
+      // Second layer behind requestPasswordReset()'s own check — covers a
+      // reset link reaching a seat account by some other route (e.g.
+      // triggered directly from the Supabase dashboard). A seat's whole
+      // point is one shared class password for everyone in that cohort,
+      // so it must never be allowed to end up with its own personal one.
+      if (await currentUserIsSeat()) {
+        await supabase.auth.signOut();
+        setStatus("class-seat");
         return;
       }
 
@@ -105,6 +117,24 @@ export default function ResetPasswordForm() {
     return (
       <div className="rounded-2xl border border-ink/10 bg-card p-7 text-center text-sm text-muted shadow-sm sm:p-8">
         Checking your reset link…
+      </div>
+    );
+  }
+
+  if (status === "class-seat") {
+    return (
+      <div className="rounded-2xl border border-ink/10 bg-card p-7 text-center shadow-sm sm:p-8">
+        <p className="text-sm leading-relaxed text-ink">
+          This account uses your class&apos;s shared login — there&apos;s no
+          personal password to reset. Log in with your class username and
+          password instead.
+        </p>
+        <a
+          href="/login"
+          className="mt-5 inline-flex items-center justify-center rounded-full bg-teal px-6 py-3 text-sm font-medium text-porcelain transition-colors hover:bg-teal-dark"
+        >
+          Go to login
+        </a>
       </div>
     );
   }

@@ -1,30 +1,53 @@
 "use client";
 
-import { useState } from "react";
-import { createClient } from "@/lib/supabase/client";
+import { useState, useTransition } from "react";
+import Link from "next/link";
+import { requestPasswordReset } from "@/lib/actions/classLogin";
 
 export default function ForgotPasswordForm() {
   const [email, setEmail] = useState("");
-  const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [sent, setSent] = useState(false);
+  const [isClassSeat, setIsClassSeat] = useState(false);
+  const [pending, startTransition] = useTransition();
 
-  async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
+  function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    setSubmitting(true);
     setError(null);
+    const formData = new FormData();
+    formData.set("email", email);
+    formData.set("redirect_to", `${window.location.origin}/auth/callback?next=/reset-password`);
 
-    const supabase = createClient();
-    const { error: resetError } = await supabase.auth.resetPasswordForEmail(email, {
-      redirectTo: `${window.location.origin}/auth/callback?next=/reset-password`,
+    startTransition(async () => {
+      const result = await requestPasswordReset(formData);
+      if ("error" in result) {
+        setError(result.error);
+        return;
+      }
+      if ("isClassSeat" in result) {
+        setIsClassSeat(true);
+        return;
+      }
+      setSent(true);
     });
+  }
 
-    setSubmitting(false);
-    if (resetError) {
-      setError(resetError.message);
-      return;
-    }
-    setSent(true);
+  if (isClassSeat) {
+    return (
+      <div className="rounded-2xl border border-ink/10 bg-card p-7 text-center shadow-sm sm:p-8">
+        <p className="text-sm leading-relaxed text-ink">
+          This account uses your class&apos;s shared login — there&apos;s no
+          personal password to reset. Log in with your class username and
+          password instead.
+        </p>
+        <Link
+          href="/login"
+          className="mt-5 inline-flex items-center justify-center rounded-full bg-teal px-6 py-3 text-sm font-medium text-porcelain transition-colors hover:bg-teal-dark"
+        >
+          Go to login
+        </Link>
+      </div>
+    );
   }
 
   if (sent) {
@@ -69,10 +92,10 @@ export default function ForgotPasswordForm() {
 
         <button
           type="submit"
-          disabled={submitting}
+          disabled={pending}
           className="w-full rounded-full bg-ink px-6 py-3 text-sm font-medium text-porcelain transition-colors hover:bg-teal disabled:opacity-70"
         >
-          {submitting ? "Sending…" : "Send reset link"}
+          {pending ? "Sending…" : "Send reset link"}
         </button>
       </div>
     </form>

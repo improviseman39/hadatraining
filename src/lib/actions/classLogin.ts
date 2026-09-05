@@ -17,6 +17,7 @@ const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 // LoginForm.tsx narrowing on `"error" in result` need this to be exact).
 type LoginResult = { error: string } | { needsProfile: true } | { success: true };
 type ClaimSeatResult = { error: string } | { success: true };
+type PasswordResetResult = { error: string } | { isClassSeat: true } | { success: true };
 
 type GroupCredential = {
   id: string;
@@ -254,7 +255,67 @@ export async function claimSeat(formData: FormData): Promise<ClaimSeatResult> {
 
   // The existing onboarding middleware (src/lib/supabase/middleware.ts)
   // takes it from here — email isn't verified yet, so the very next
-  // request lands on /onboarding/verify-email, then set-password, then
-  // setup-2fa, exactly like any other new account.
+  // request lands on /onboarding/verify-email, then straight to
+  // setup-2fa (must_change_password is forced false above, so the
+  // set-password step is skipped entirely — see the comment there).
   return { success: true };
+}
+
+/**
+ * True if this profile belongs to a class-login seat (as opposed to an
+ * individually-invited or self-registered account) — used to keep the
+ * password-reset flow from ever letting a seat drift onto its own
+ * personal password, which would defeat the point of a shared class
+ * credential everyone in that cohort keeps using.
+ */
+async function isSeatProfile(profileId: string): Promise<boolean> {
+  const admin = createAdminClient();
+  const { data } = await admin
+    .from("group_seats")
+    .select("id")
+    .eq("user_id", profileId)
+    .is("revoked_at", null)
+    .maybeSingle();
+  return Boolean(data);
+}
+
+/**
+ * Entry point for "Forgot password?" — used instead of calling
+ * supabase.auth.resetPasswordForEmail directly from the client, so a class
+ * seat's email can be checked first. Deliberately still returns the normal
+ * generic "sent" outcome (via `success: true`, same wording either way in
+ * the UI) when the email doesn't match any account, rather than confirming
+ * or denying — only a genuine class-seat match gets the different message.
+ */
+export async function requestPasswordReset(formData: FormData): Promise<PasswordResetResult> {
+  const email = String(formData.get("email") ?? "").trim().toLowerCase();
+  const redirectTo = String(formData.get("redirect_to") ?? "");
+  if (!email) return { error: "Enter your email address." };
+
+  const admin = createAdminClient();
+  const { data: profile } = await admin.from("profiles").select("id").eq("email", email).maybeSingle();
+
+  if (profile && (await isSeatProfile(profile.id))) {
+    return { isClassSeat: true };
+  }
+
+  const supabase = await createClient();
+  const { error } = await supabase.auth.resetPasswordForEmail(email, { redirectTo });
+  if (error) return { error: error.message };
+  return { success: true };
+}
+
+/**
+ * Checked by ResetPasswordForm right after landing on a reset link, as a
+ * second layer behind requestPasswordReset() — covers a reset link reaching
+ * a seat account by some other route (e.g. triggered directly from the
+ * Supabase dashboard) rather than relying solely on the request-time check.
+ */
+export async function currentUserIsSeat(): Promise<boolean> {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return false;
+  return isSeatProfile(user.id);
 }
