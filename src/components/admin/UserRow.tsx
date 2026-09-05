@@ -15,7 +15,6 @@ type Profile = {
   full_name: string | null;
   role: "user" | "design" | "admin" | "super_admin";
   created_at: string;
-  invited_by_email: string | null;
   group_id: string | null;
 };
 
@@ -134,7 +133,6 @@ export default function UserRow({
       <td className="px-4 py-3 text-muted">
         {new Date(profile.created_at).toLocaleDateString()}
       </td>
-      <td className="px-4 py-3 text-muted">{profile.invited_by_email ?? "—"}</td>
       <td className="px-4 py-3 text-right">
         <div className="flex items-center justify-end gap-1.5">
           <button

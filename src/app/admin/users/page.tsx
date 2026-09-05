@@ -20,9 +20,7 @@ export default async function AdminUsersPage() {
     await Promise.all([
       supabase
         .from("profiles")
-        .select(
-          "id, email, full_name, role, created_at, group_id, invited_by_profile:profiles!invited_by(email)"
-        )
+        .select("id, email, full_name, role, created_at, group_id")
         .order("created_at"),
       supabase.from("groups").select("id, name").order("name"),
       supabase
@@ -103,37 +101,25 @@ export default async function AdminUsersPage() {
               <th className="px-4 py-3">Role</th>
               <th className="px-4 py-3">Group</th>
               <th className="px-4 py-3">Joined</th>
-              <th className="px-4 py-3">Invited by</th>
               <th className="px-4 py-3 text-right">Actions</th>
             </tr>
           </thead>
           <tbody>
-            {(profiles ?? []).map((profile) => {
-              const invitedBy = profile.invited_by_profile as
-                | { email: string }[]
-                | { email: string }
-                | null;
-              const invitedByEmail = Array.isArray(invitedBy)
-                ? (invitedBy[0]?.email ?? null)
-                : (invitedBy?.email ?? null);
-
-              return (
-                <UserRow
-                  key={profile.id}
-                  profile={{
-                    id: profile.id,
-                    email: profile.email,
-                    full_name: profile.full_name,
-                    role: profile.role,
-                    created_at: profile.created_at,
-                    group_id: profile.group_id,
-                    invited_by_email: invitedByEmail,
-                  }}
-                  groups={groupList}
-                  isSelf={profile.id === currentUser?.id}
-                />
-              );
-            })}
+            {(profiles ?? []).map((profile) => (
+              <UserRow
+                key={profile.id}
+                profile={{
+                  id: profile.id,
+                  email: profile.email,
+                  full_name: profile.full_name,
+                  role: profile.role,
+                  created_at: profile.created_at,
+                  group_id: profile.group_id,
+                }}
+                groups={groupList}
+                isSelf={profile.id === currentUser?.id}
+              />
+            ))}
           </tbody>
         </table>
         </div>
