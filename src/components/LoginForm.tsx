@@ -208,11 +208,6 @@ export default function LoginForm({ signupEnabled }: { signupEnabled: boolean })
             onChange={(event) => setPassword(event.target.value)}
             className="w-full rounded-lg border border-ink/15 bg-porcelain px-4 py-2.5 text-ink placeholder:text-muted/60 focus:border-teal focus:outline-none focus:ring-2 focus:ring-teal/30"
           />
-          <p className="mt-2 text-right text-xs">
-            <Link href="/forgot-password" className="font-medium text-teal hover:underline">
-              Forgot password?
-            </Link>
-          </p>
         </div>
 
         {error && (
