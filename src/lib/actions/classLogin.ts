@@ -194,10 +194,10 @@ export async function claimSeat(formData: FormData): Promise<ClaimSeatResult> {
     // Must be true — see the identical comment in admin/users/actions.ts:
     // GoTrue hard-blocks sign-in for unconfirmed accounts regardless of
     // config. Real proof of owning this inbox is still enforced by the
-    // existing email_verified_at / OTP onboarding step right after this,
-    // which is deliberately left to run (unlike the old synthetic-email
-    // version of this flow) since the email is now a real one worth
-    // verifying.
+    // existing email_verified_at / OTP onboarding step right after this
+    // (unlike the old synthetic-email version of this flow, this email is
+    // real and worth verifying) — see the must_change_password comment
+    // below for why the *password* half of onboarding is skipped instead.
     email_confirm: true,
     user_metadata: { role: "user", full_name: fullName },
   });
@@ -210,13 +210,22 @@ export async function claimSeat(formData: FormData): Promise<ClaimSeatResult> {
     return { error: createError?.message ?? "Couldn't set up your access. Try again." };
   }
 
-  // Only group_id needs setting explicitly — full_name came through
-  // user_metadata and is already populated by the handle_new_user()
-  // trigger (0020_self_signup_profile_fields.sql), and
-  // must_change_password/email_verified_at are left at their normal
-  // defaults so this account goes through the same onboarding chain
-  // (verify email, then set password, then set up 2FA) as any other.
-  await admin.from("profiles").update({ group_id: credential.group_id }).eq("id", created.user.id);
+  // full_name came through user_metadata and is already populated by the
+  // handle_new_user() trigger (0020_self_signup_profile_fields.sql).
+  // must_change_password is deliberately forced false here (unlike a
+  // normal admin-created account, which defaults to true) — the whole
+  // point of this access mode is that every seat in a cohort keeps using
+  // the one shared class password forever, not a personal one, so the
+  // /onboarding/set-password step must never trigger for a seat account.
+  // The throwaway password above stays permanently unused; every sign-in
+  // goes through the class password (new device) or a device-token-based
+  // magic link (returning device) instead. email_verified_at is left null
+  // so the OTP step still runs — that's what earns the "who's actually
+  // using this seat" audit trail, and doesn't touch the password at all.
+  await admin
+    .from("profiles")
+    .update({ group_id: credential.group_id, must_change_password: false })
+    .eq("id", created.user.id);
 
   const deviceToken = randomBytes(32).toString("hex");
   await admin.from("group_seats").insert({
