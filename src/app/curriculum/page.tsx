@@ -1,7 +1,7 @@
 import { categoryOrder } from "@/data/sessions";
 import { createClient } from "@/lib/supabase/server";
 import { mapSession } from "@/lib/supabase/mappers";
-import SessionListRow from "@/components/SessionListRow";
+import SessionGridCard from "@/components/SessionGridCard";
 import CurriculumLoginBanner from "@/components/CurriculumLoginBanner";
 import ContinueWatchingCard from "@/components/ContinueWatchingCard";
 
@@ -133,7 +133,7 @@ export default async function CurriculumPage() {
         </div>
       </div>
 
-      <div className="mt-2 flex flex-col gap-2 sm:mt-3 sm:gap-2.5">
+      <div className="mt-3 grid grid-cols-2 gap-3 sm:mt-4 md:grid-cols-4 md:gap-4">
         {categoryOrder.map((category) => {
           const categorySessions = sessions
             .filter((session) => session.category === category)
@@ -142,17 +142,13 @@ export default async function CurriculumPage() {
 
           return (
             <div key={category}>
-              <div className="mb-1 flex items-center gap-3">
-                <h2 className="font-serif text-sm text-ink sm:text-base">{category}</h2>
-                <span className="h-px flex-1 bg-ink/10" />
-                <span className="text-xs text-muted">
-                  {categorySessions.length} session
-                  {categorySessions.length > 1 ? "s" : ""}
-                </span>
+              <div className="mb-1.5 flex items-center justify-between gap-2">
+                <h2 className="font-serif text-sm text-ink">{category}</h2>
+                <span className="text-[11px] text-muted">{categorySessions.length}</span>
               </div>
-              <div className="flex flex-col gap-1">
+              <div className="flex flex-col gap-1.5">
                 {categorySessions.map((session) => (
-                  <SessionListRow
+                  <SessionGridCard
                     key={session.slug}
                     session={session}
                     subTopicCount={subTopicCounts.get(session.id) ?? 0}
