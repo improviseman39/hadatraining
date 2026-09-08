@@ -84,27 +84,6 @@ export default async function HomePage() {
       </section>
 
       <UpdatesCarousel items={announcements} />
-
-      <section className="container-page py-16 sm:py-24">
-        <div className="flex flex-col items-start gap-8 rounded-2xl border border-ink/10 bg-card p-8 shadow-sm sm:flex-row sm:items-center sm:justify-between sm:p-10">
-          <div className="max-w-2xl">
-            <h2 className="font-serif text-3xl font-medium text-ink sm:text-4xl">
-              The curriculum
-            </h2>
-            <p className="mt-3 text-base leading-relaxed text-muted">
-              {sessions.length} sessions across four clinical categories &mdash;
-              Foundations, Injectables, Devices, and Safety &mdash; delivered
-              in sequence from anatomy fundamentals to advanced technique.
-            </p>
-          </div>
-          <Link
-            href="/curriculum"
-            className="w-fit shrink-0 rounded-full bg-teal px-6 py-3 text-sm font-medium text-porcelain transition-colors hover:bg-teal-dark"
-          >
-            Explore the curriculum &rarr;
-          </Link>
-        </div>
-      </section>
     </>
   );
 }
