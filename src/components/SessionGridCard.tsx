@@ -53,6 +53,24 @@ export default function SessionGridCard({
             </svg>
           </span>
         )}
+        {!locked && completionPercent === 100 && (
+          <span
+            aria-label="Completed"
+            className="absolute right-1 top-1 flex h-4 w-4 items-center justify-center rounded-full bg-teal text-porcelain"
+          >
+            <svg width="9" height="9" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+              <path d="M5 13l4 4L19 7" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
+            </svg>
+          </span>
+        )}
+        {/* A video-style progress bar along the image's bottom edge - the
+            same "how far into this lesson am I" cue as a seek bar, so the
+            percent badge below reads as lesson progress at a glance. */}
+        {!locked && completionPercent !== undefined && completionPercent > 0 && (
+          <div className="absolute inset-x-0 bottom-0 h-1 bg-ink/30">
+            <div className="h-full bg-teal" style={{ width: `${completionPercent}%` }} />
+          </div>
+        )}
       </div>
 
       <div className="flex flex-1 flex-col gap-0.5 p-1.5">
@@ -70,15 +88,19 @@ export default function SessionGridCard({
           )}
           {!locked && completionPercent !== undefined && (
             <span
-              className={`ml-auto rounded-full px-1.5 py-0.5 text-[10px] font-medium ${
+              className={`ml-auto whitespace-nowrap rounded-full px-1.5 py-0.5 text-[10px] font-medium ${
                 completionPercent === 100
-                  ? "bg-teal text-porcelain"
+                  ? "bg-teal/10 text-teal-dark"
                   : completionPercent > 0
                     ? "bg-teal/10 text-teal-dark"
                     : "bg-ink/5 text-muted"
               }`}
             >
-              {completionPercent === 100 ? "Done" : `${completionPercent}%`}
+              {completionPercent === 100
+                ? "Completed"
+                : completionPercent > 0
+                  ? `${completionPercent}% watched`
+                  : "Not started"}
             </span>
           )}
         </div>

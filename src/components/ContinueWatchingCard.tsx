@@ -22,16 +22,24 @@ export default function ContinueWatchingCard({
     return (
       <Link
         href={`/sessions/${sessionSlug}#block-${blockId}`}
-        className="group flex items-center gap-2 overflow-hidden rounded-full border border-teal/20 bg-teal/5 py-1 pl-1 pr-3 transition-colors hover:border-teal/40"
+        className="group flex items-center gap-2 overflow-hidden rounded-2xl border border-teal/20 bg-teal/5 py-1.5 pl-1.5 pr-3.5 transition-colors hover:border-teal/40"
       >
-        <div className="relative h-6 w-9 shrink-0 overflow-hidden rounded-full">
-          <Image src={sessionImageUrl} alt="" fill sizes="36px" className="object-cover" />
+        <div className="relative h-8 w-11 shrink-0 overflow-hidden rounded-lg">
+          <Image src={sessionImageUrl} alt="" fill sizes="44px" className="object-cover" />
+          <span
+            aria-hidden="true"
+            className="absolute inset-0 flex items-center justify-center bg-ink/25"
+          >
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="#fdfaf4" xmlns="http://www.w3.org/2000/svg">
+              <path d="M8 5v14l11-7z" />
+            </svg>
+          </span>
         </div>
         <div className="min-w-0">
           <p className="text-[9px] font-medium uppercase leading-none tracking-wide text-teal-dark">
-            Continue
+            Continue learning
           </p>
-          <p className="mt-0.5 max-w-[8rem] truncate text-xs font-medium leading-none text-ink group-hover:text-teal">
+          <p className="mt-1 max-w-[8rem] truncate text-xs font-medium leading-none text-ink group-hover:text-teal">
             {sessionTitle}
           </p>
         </div>

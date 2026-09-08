@@ -100,20 +100,36 @@ export default async function CurriculumPage() {
 
         <div className="flex flex-wrap items-center gap-2 sm:shrink-0 sm:justify-end">
           {overallCompletionPercent !== undefined && (
-            <div className="flex shrink-0 items-center gap-2 rounded-full border border-teal/20 bg-teal/5 py-1 pl-3 pr-2.5">
+            <div className="flex shrink-0 items-center gap-2.5 rounded-2xl border border-teal/20 bg-teal/5 py-1.5 pl-3 pr-3.5">
+              <span
+                aria-hidden="true"
+                className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-teal/10 text-teal-dark"
+              >
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                  <path
+                    d="M12 4a8 8 0 108 8"
+                    stroke="currentColor"
+                    strokeWidth="2"
+                    strokeLinecap="round"
+                  />
+                  <path d="M12 4v8l5 3" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+                </svg>
+              </span>
               <div>
                 <p className="text-[9px] font-medium uppercase leading-none tracking-wide text-teal-dark">
-                  Progress
+                  Your progress
                 </p>
-                <p className="mt-0.5 text-xs font-medium leading-none text-ink">
-                  {overallCompletionPercent}%
-                </p>
-              </div>
-              <div className="h-4 w-12 overflow-hidden rounded-full bg-ink/10">
-                <div
-                  className="h-full rounded-full bg-teal transition-all"
-                  style={{ width: `${overallCompletionPercent}%` }}
-                />
+                <div className="mt-1 flex items-center gap-1.5">
+                  <div className="h-1.5 w-16 overflow-hidden rounded-full bg-ink/10">
+                    <div
+                      className="h-full rounded-full bg-teal transition-all"
+                      style={{ width: `${overallCompletionPercent}%` }}
+                    />
+                  </div>
+                  <span className="whitespace-nowrap text-xs font-medium leading-none text-ink">
+                    {overallCompletionPercent}% complete
+                  </span>
+                </div>
               </div>
             </div>
           )}
