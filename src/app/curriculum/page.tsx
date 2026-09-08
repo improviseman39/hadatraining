@@ -1,7 +1,7 @@
 import { categoryOrder } from "@/data/sessions";
 import { createClient } from "@/lib/supabase/server";
 import { mapSession } from "@/lib/supabase/mappers";
-import SessionCard from "@/components/SessionCard";
+import SessionListRow from "@/components/SessionListRow";
 import CurriculumLoginBanner from "@/components/CurriculumLoginBanner";
 import ContinueWatchingCard from "@/components/ContinueWatchingCard";
 
@@ -87,42 +87,37 @@ export default async function CurriculumPage() {
   }
 
   return (
-    <div className="container-page py-12 sm:py-16">
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+    <div className="container-page py-8 sm:py-10">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
         <div className="max-w-2xl">
           <p className="text-sm font-medium uppercase tracking-[0.2em] text-teal">
             Clinical curriculum
           </p>
-          <h1 className="mt-2 font-serif text-3xl font-medium text-ink sm:text-4xl">
+          <h1 className="mt-1.5 font-serif text-2xl font-medium text-ink sm:text-3xl">
             The curriculum
           </h1>
-          <p className="mt-3 text-base leading-relaxed text-muted">
-            Eight sessions, organized by clinical category and delivered in
-            sequence &mdash; from foundational anatomy to advanced injectable
-            and device technique.
-          </p>
         </div>
         <CurriculumLoginBanner />
       </div>
 
       {overallCompletionPercent !== undefined && (
-        <div className="mt-10 rounded-2xl border border-teal/20 bg-teal/5 p-5 sm:p-6">
+        <div className="mt-5 rounded-2xl border border-teal/20 bg-teal/5 p-4 sm:p-5">
           <div className="flex flex-wrap items-center justify-between gap-3">
             <div>
               <p className="text-sm font-medium text-ink">Your overall progress</p>
-              <p className="mt-0.5 text-sm text-muted">
+              <p className="mt-0.5 text-xs text-muted">
                 Across all {sessions.length} session{sessions.length === 1 ? "" : "s"}
               </p>
             </div>
             <span
-              className={`text-2xl font-serif font-medium ${
+              className={`text-xl font-serif font-medium ${
                 overallCompletionPercent === 100 ? "text-teal" : "text-ink"
               }`}
             >
               {overallCompletionPercent}%
             </span>
           </div>
-          <div className="mt-4 h-2 w-full overflow-hidden rounded-full bg-ink/10">
+          <div className="mt-3 h-1.5 w-full overflow-hidden rounded-full bg-ink/10">
             <div
               className="h-full rounded-full bg-teal transition-all"
               style={{ width: `${overallCompletionPercent}%` }}
@@ -132,7 +127,7 @@ export default async function CurriculumPage() {
       )}
 
       {continueWatching && (
-        <div className="mt-8">
+        <div className="mt-4">
           <ContinueWatchingCard
             sessionSlug={continueWatching.sessionSlug}
             sessionTitle={continueWatching.sessionTitle}
@@ -143,7 +138,7 @@ export default async function CurriculumPage() {
         </div>
       )}
 
-      <div className="mt-12 flex flex-col gap-16 sm:mt-16">
+      <div className="mt-6 flex flex-col gap-6 sm:mt-7 sm:gap-7">
         {categoryOrder.map((category) => {
           const categorySessions = sessions
             .filter((session) => session.category === category)
@@ -152,27 +147,17 @@ export default async function CurriculumPage() {
 
           return (
             <div key={category}>
-              <div className="mb-6 flex items-center gap-4">
-                <h2 className="font-serif text-xl text-ink sm:text-2xl">
-                  {category}
-                </h2>
+              <div className="mb-2.5 flex items-center gap-3">
+                <h2 className="font-serif text-lg text-ink">{category}</h2>
                 <span className="h-px flex-1 bg-ink/10" />
-                <span className="text-sm text-muted">
+                <span className="text-xs text-muted">
                   {categorySessions.length} session
                   {categorySessions.length > 1 ? "s" : ""}
                 </span>
               </div>
-              <div
-                className={`grid gap-5 ${
-                  categorySessions.length === 1
-                    ? "max-w-sm grid-cols-1"
-                    : categorySessions.length === 2
-                      ? "max-w-3xl grid-cols-1 sm:grid-cols-2"
-                      : "grid-cols-1 sm:grid-cols-2 lg:grid-cols-3"
-                }`}
-              >
+              <div className="flex flex-col gap-2">
                 {categorySessions.map((session) => (
-                  <SessionCard
+                  <SessionListRow
                     key={session.slug}
                     session={session}
                     subTopicCount={subTopicCounts.get(session.id) ?? 0}
