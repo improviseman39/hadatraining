@@ -55,20 +55,20 @@ export default async function HomePage() {
           className="pointer-events-none absolute -right-24 -top-24 h-72 w-72 rounded-full bg-teal/20 blur-3xl sm:h-96 sm:w-96"
         />
 
-        <div className="container-page relative grid grid-cols-1 items-center gap-10 py-20 sm:py-28 lg:grid-cols-[1.3fr_1fr] lg:gap-14 lg:py-32">
+        <div className="container-page relative grid grid-cols-1 items-center gap-10 py-10 sm:py-14 lg:grid-cols-[1.3fr_1fr] lg:gap-14 lg:py-16">
           <div>
             <p className="text-sm font-medium uppercase tracking-[0.2em] text-[#8FC4BE]">
               Clinical Curriculum &middot; {sessions.length} Sessions
             </p>
-            <h1 className="mt-5 max-w-3xl font-serif text-4xl font-medium leading-[1.1] text-porcelain sm:text-5xl lg:text-6xl">
+            <h1 className="mt-3 max-w-3xl font-serif text-4xl font-medium leading-[1.1] text-porcelain sm:text-5xl lg:text-6xl">
               Rigorous, structured training for aesthetic medicine practitioners.
             </h1>
-            <p className="mt-6 max-w-xl text-base leading-relaxed text-porcelain/80 sm:text-lg">
+            <p className="mt-4 max-w-xl text-base leading-relaxed text-porcelain/80 sm:text-lg">
               HADA Aesthetic Training takes you from facial anatomy fundamentals
               through injectables, devices, and safety protocol &mdash; a
               sequential curriculum built for real clinical practice.
             </p>
-            <div className="mt-10 flex flex-wrap items-center gap-4">
+            <div className="mt-6 flex flex-wrap items-center gap-4">
               <Link
                 href="/curriculum"
                 className="rounded-full bg-teal px-6 py-3 text-sm font-medium text-porcelain transition-colors hover:bg-teal-dark"
