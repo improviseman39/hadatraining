@@ -55,12 +55,12 @@ export default async function HomePage() {
           className="pointer-events-none absolute -right-24 -top-24 h-72 w-72 rounded-full bg-teal/20 blur-3xl sm:h-96 sm:w-96"
         />
 
-        <div className="container-page relative grid grid-cols-1 items-center gap-10 py-10 sm:py-14 lg:grid-cols-[1.3fr_1fr] lg:gap-14 lg:py-16">
+        <div className="container-page relative grid grid-cols-1 items-center gap-8 py-8 sm:py-10 lg:grid-cols-[1.3fr_1fr] lg:gap-14 lg:py-12">
           <div>
             <p className="text-sm font-medium uppercase tracking-[0.2em] text-[#8FC4BE]">
               Clinical Curriculum &middot; {sessions.length} Sessions
             </p>
-            <h1 className="mt-3 max-w-3xl font-serif text-4xl font-medium leading-[1.1] text-porcelain sm:text-5xl lg:text-6xl">
+            <h1 className="mt-3 max-w-3xl font-serif text-3xl font-medium leading-[1.1] text-porcelain sm:text-4xl lg:text-5xl">
               Rigorous, structured training for aesthetic medicine practitioners.
             </h1>
             <p className="mt-4 max-w-xl text-base leading-relaxed text-porcelain/80 sm:text-lg">
