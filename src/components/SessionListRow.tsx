@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import Link from "next/link";
 import type { Session } from "@/types/content";
 import { useAuth } from "@/context/AuthContext";
@@ -10,11 +11,13 @@ function pad(n: number): string {
 
 /**
  * A slim, single-line alternative to SessionCard for the curriculum
- * overview — no image, so a whole category's worth of sessions reads as a
- * scannable list rather than a wall of cards. Kept as a separate component
- * (not a "compact" prop on SessionCard) since the two show meaningfully
- * different information: SessionCard's photo/summary suit a single
- * session's own page, not a from-the-top overview of all eight.
+ * overview — a small thumbnail instead of a full photo, so a whole
+ * category's worth of sessions still reads as a scannable list rather than
+ * a wall of large cards, while keeping the visual identity a plain text
+ * row would lose. Kept as a separate component (not a "compact" prop on
+ * SessionCard) since the two show meaningfully different information:
+ * SessionCard's full photo/summary suit a single session's own page, not
+ * a from-the-top overview of all eight.
  */
 export default function SessionListRow({
   session,
@@ -31,11 +34,14 @@ export default function SessionListRow({
   return (
     <Link
       href={`/sessions/${session.slug}`}
-      className="group flex items-center gap-3 rounded-xl border border-ink/10 bg-card px-4 py-3 transition-colors hover:border-teal/40 hover:bg-teal/5 sm:gap-4 sm:px-5"
+      className="group flex items-center gap-3 rounded-xl border border-ink/10 bg-card py-2 pl-2 pr-4 transition-colors hover:border-teal/40 hover:bg-teal/5 sm:gap-4 sm:pr-5"
     >
-      <span className="w-6 shrink-0 font-serif text-sm text-muted sm:text-base">
-        {pad(session.position)}
-      </span>
+      <div className="relative h-11 w-16 shrink-0 overflow-hidden rounded-lg sm:h-12 sm:w-[4.5rem]">
+        <Image src={session.imageUrl} alt="" fill sizes="72px" className="object-cover" />
+        <span className="absolute bottom-0.5 left-1 font-serif text-[11px] leading-none text-porcelain drop-shadow-sm sm:text-xs">
+          {pad(session.position)}
+        </span>
+      </div>
 
       <span className="min-w-0 flex-1">
         <span className="block truncate font-serif text-base text-ink group-hover:text-teal sm:text-lg">

@@ -7,13 +7,38 @@ export default function ContinueWatchingCard({
   sessionImageUrl,
   blockId,
   blockTitle,
+  compact = false,
 }: {
   sessionSlug: string;
   sessionTitle: string;
   sessionImageUrl: string;
   blockId: string;
   blockTitle: string | null;
+  /** Slimmer variant for sitting inline next to a page header (e.g.
+   * /curriculum), instead of its own full-width block with its own margin. */
+  compact?: boolean;
 }) {
+  if (compact) {
+    return (
+      <Link
+        href={`/sessions/${sessionSlug}#block-${blockId}`}
+        className="group flex items-center gap-2.5 overflow-hidden rounded-full border border-teal/20 bg-teal/5 py-1.5 pl-1.5 pr-3.5 transition-colors hover:border-teal/40"
+      >
+        <div className="relative h-8 w-11 shrink-0 overflow-hidden rounded-full">
+          <Image src={sessionImageUrl} alt="" fill sizes="44px" className="object-cover" />
+        </div>
+        <div className="min-w-0">
+          <p className="text-[10px] font-medium uppercase leading-none tracking-wide text-teal-dark">
+            Continue
+          </p>
+          <p className="mt-0.5 truncate text-sm font-medium leading-none text-ink group-hover:text-teal">
+            {sessionTitle}
+          </p>
+        </div>
+      </Link>
+    );
+  }
+
   return (
     <Link
       href={`/sessions/${sessionSlug}#block-${blockId}`}

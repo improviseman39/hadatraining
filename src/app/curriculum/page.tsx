@@ -88,7 +88,7 @@ export default async function CurriculumPage() {
 
   return (
     <div className="container-page py-8 sm:py-10">
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
         <div className="max-w-2xl">
           <p className="text-sm font-medium uppercase tracking-[0.2em] text-teal">
             Clinical curriculum
@@ -97,48 +97,43 @@ export default async function CurriculumPage() {
             The curriculum
           </h1>
         </div>
-        <CurriculumLoginBanner />
+
+        <div className="flex flex-wrap items-center gap-2.5 sm:shrink-0 sm:justify-end">
+          {overallCompletionPercent !== undefined && (
+            <div className="flex shrink-0 items-center gap-2.5 rounded-full border border-teal/20 bg-teal/5 py-1.5 pl-3.5 pr-3">
+              <div>
+                <p className="text-[10px] font-medium uppercase leading-none tracking-wide text-teal-dark">
+                  Progress
+                </p>
+                <p className="mt-0.5 text-sm font-medium leading-none text-ink">
+                  {overallCompletionPercent}%
+                </p>
+              </div>
+              <div className="h-6 w-16 overflow-hidden rounded-full bg-ink/10">
+                <div
+                  className="h-full rounded-full bg-teal transition-all"
+                  style={{ width: `${overallCompletionPercent}%` }}
+                />
+              </div>
+            </div>
+          )}
+
+          {continueWatching && (
+            <ContinueWatchingCard
+              compact
+              sessionSlug={continueWatching.sessionSlug}
+              sessionTitle={continueWatching.sessionTitle}
+              sessionImageUrl={continueWatching.sessionImageUrl}
+              blockId={continueWatching.blockId}
+              blockTitle={continueWatching.blockTitle}
+            />
+          )}
+
+          <CurriculumLoginBanner />
+        </div>
       </div>
 
-      {overallCompletionPercent !== undefined && (
-        <div className="mt-5 rounded-2xl border border-teal/20 bg-teal/5 p-4 sm:p-5">
-          <div className="flex flex-wrap items-center justify-between gap-3">
-            <div>
-              <p className="text-sm font-medium text-ink">Your overall progress</p>
-              <p className="mt-0.5 text-xs text-muted">
-                Across all {sessions.length} session{sessions.length === 1 ? "" : "s"}
-              </p>
-            </div>
-            <span
-              className={`text-xl font-serif font-medium ${
-                overallCompletionPercent === 100 ? "text-teal" : "text-ink"
-              }`}
-            >
-              {overallCompletionPercent}%
-            </span>
-          </div>
-          <div className="mt-3 h-1.5 w-full overflow-hidden rounded-full bg-ink/10">
-            <div
-              className="h-full rounded-full bg-teal transition-all"
-              style={{ width: `${overallCompletionPercent}%` }}
-            />
-          </div>
-        </div>
-      )}
-
-      {continueWatching && (
-        <div className="mt-4">
-          <ContinueWatchingCard
-            sessionSlug={continueWatching.sessionSlug}
-            sessionTitle={continueWatching.sessionTitle}
-            sessionImageUrl={continueWatching.sessionImageUrl}
-            blockId={continueWatching.blockId}
-            blockTitle={continueWatching.blockTitle}
-          />
-        </div>
-      )}
-
-      <div className="mt-6 flex flex-col gap-6 sm:mt-7 sm:gap-7">
+      <div className="mt-5 flex flex-col gap-5 sm:mt-6 sm:gap-6">
         {categoryOrder.map((category) => {
           const categorySessions = sessions
             .filter((session) => session.category === category)
