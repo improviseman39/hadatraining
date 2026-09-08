@@ -87,29 +87,29 @@ export default async function CurriculumPage() {
   }
 
   return (
-    <div className="container-page py-8 sm:py-10">
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+    <div className="container-page py-3 sm:py-4">
+      <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
         <div className="max-w-2xl">
-          <p className="text-sm font-medium uppercase tracking-[0.2em] text-teal">
+          <p className="text-xs font-medium uppercase tracking-[0.2em] text-teal sm:text-sm">
             Clinical curriculum
           </p>
-          <h1 className="mt-1.5 font-serif text-2xl font-medium text-ink sm:text-3xl">
+          <h1 className="mt-1 font-serif text-xl font-medium text-ink sm:text-2xl">
             The curriculum
           </h1>
         </div>
 
-        <div className="flex flex-wrap items-center gap-2.5 sm:shrink-0 sm:justify-end">
+        <div className="flex flex-wrap items-center gap-2 sm:shrink-0 sm:justify-end">
           {overallCompletionPercent !== undefined && (
-            <div className="flex shrink-0 items-center gap-2.5 rounded-full border border-teal/20 bg-teal/5 py-1.5 pl-3.5 pr-3">
+            <div className="flex shrink-0 items-center gap-2 rounded-full border border-teal/20 bg-teal/5 py-1 pl-3 pr-2.5">
               <div>
-                <p className="text-[10px] font-medium uppercase leading-none tracking-wide text-teal-dark">
+                <p className="text-[9px] font-medium uppercase leading-none tracking-wide text-teal-dark">
                   Progress
                 </p>
-                <p className="mt-0.5 text-sm font-medium leading-none text-ink">
+                <p className="mt-0.5 text-xs font-medium leading-none text-ink">
                   {overallCompletionPercent}%
                 </p>
               </div>
-              <div className="h-6 w-16 overflow-hidden rounded-full bg-ink/10">
+              <div className="h-4 w-12 overflow-hidden rounded-full bg-ink/10">
                 <div
                   className="h-full rounded-full bg-teal transition-all"
                   style={{ width: `${overallCompletionPercent}%` }}
@@ -133,7 +133,7 @@ export default async function CurriculumPage() {
         </div>
       </div>
 
-      <div className="mt-5 flex flex-col gap-5 sm:mt-6 sm:gap-6">
+      <div className="mt-2 flex flex-col gap-2 sm:mt-3 sm:gap-2.5">
         {categoryOrder.map((category) => {
           const categorySessions = sessions
             .filter((session) => session.category === category)
@@ -142,15 +142,15 @@ export default async function CurriculumPage() {
 
           return (
             <div key={category}>
-              <div className="mb-2.5 flex items-center gap-3">
-                <h2 className="font-serif text-lg text-ink">{category}</h2>
+              <div className="mb-1 flex items-center gap-3">
+                <h2 className="font-serif text-sm text-ink sm:text-base">{category}</h2>
                 <span className="h-px flex-1 bg-ink/10" />
                 <span className="text-xs text-muted">
                   {categorySessions.length} session
                   {categorySessions.length > 1 ? "s" : ""}
                 </span>
               </div>
-              <div className="flex flex-col gap-2">
+              <div className="flex flex-col gap-1">
                 {categorySessions.map((session) => (
                   <SessionListRow
                     key={session.slug}

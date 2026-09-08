@@ -22,16 +22,16 @@ export default function ContinueWatchingCard({
     return (
       <Link
         href={`/sessions/${sessionSlug}#block-${blockId}`}
-        className="group flex items-center gap-2.5 overflow-hidden rounded-full border border-teal/20 bg-teal/5 py-1.5 pl-1.5 pr-3.5 transition-colors hover:border-teal/40"
+        className="group flex items-center gap-2 overflow-hidden rounded-full border border-teal/20 bg-teal/5 py-1 pl-1 pr-3 transition-colors hover:border-teal/40"
       >
-        <div className="relative h-8 w-11 shrink-0 overflow-hidden rounded-full">
-          <Image src={sessionImageUrl} alt="" fill sizes="44px" className="object-cover" />
+        <div className="relative h-6 w-9 shrink-0 overflow-hidden rounded-full">
+          <Image src={sessionImageUrl} alt="" fill sizes="36px" className="object-cover" />
         </div>
         <div className="min-w-0">
-          <p className="text-[10px] font-medium uppercase leading-none tracking-wide text-teal-dark">
+          <p className="text-[9px] font-medium uppercase leading-none tracking-wide text-teal-dark">
             Continue
           </p>
-          <p className="mt-0.5 truncate text-sm font-medium leading-none text-ink group-hover:text-teal">
+          <p className="mt-0.5 max-w-[8rem] truncate text-xs font-medium leading-none text-ink group-hover:text-teal">
             {sessionTitle}
           </p>
         </div>
