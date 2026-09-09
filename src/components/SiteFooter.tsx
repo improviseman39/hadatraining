@@ -29,21 +29,25 @@ export default function SiteFooter({
             students.
           </p>
         </div>
-        {socialLinks.length > 0 && (
-          <div className="flex items-center gap-4">
-            {socialLinks.map((link) => (
-              <a
-                key={link.label}
-                href={link.href}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="font-medium text-ink/70 underline-offset-4 transition-colors hover:text-teal hover:underline"
-              >
-                {link.label}
-              </a>
-            ))}
-          </div>
-        )}
+        <div className="flex items-center gap-4">
+          <a
+            href="/privacy-policy"
+            className="font-medium text-ink/70 underline-offset-4 transition-colors hover:text-teal hover:underline"
+          >
+            Privacy policy
+          </a>
+          {socialLinks.map((link) => (
+            <a
+              key={link.label}
+              href={link.href}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="font-medium text-ink/70 underline-offset-4 transition-colors hover:text-teal hover:underline"
+            >
+              {link.label}
+            </a>
+          ))}
+        </div>
       </div>
     </footer>
   );

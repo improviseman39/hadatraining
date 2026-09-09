@@ -4,6 +4,8 @@ import { useState, useTransition } from "react";
 import Link from "next/link";
 import { signUp } from "@/app/signup/actions";
 import { THAILAND_PROVINCES, CLINIC_POSITIONS, HADA_CLASS_YEARS } from "@/data/thailand";
+import PrivacyConsentModal from "@/components/PrivacyConsentModal";
+import { POLICY_VERSION } from "@/lib/privacyPolicy";
 
 const inputClass =
   "w-full rounded-lg border border-ink/15 bg-porcelain px-4 py-2.5 text-ink placeholder:text-muted/60 focus:border-teal focus:outline-none focus:ring-2 focus:ring-teal/30";
@@ -11,6 +13,7 @@ const labelClass = "mb-2 block text-sm font-medium text-ink";
 
 export default function SignupForm() {
   const [isClinicOwner, setIsClinicOwner] = useState(false);
+  const [privacyAccepted, setPrivacyAccepted] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [alreadyExists, setAlreadyExists] = useState(false);
   const [pending, startTransition] = useTransition();
@@ -30,10 +33,16 @@ export default function SignupForm() {
   }
 
   return (
-    <form
-      onSubmit={handleSubmit}
-      className="flex flex-col gap-5 rounded-2xl border border-ink/10 bg-card p-7 shadow-sm sm:p-8"
-    >
+    <>
+      {!privacyAccepted && (
+        <PrivacyConsentModal onAgree={() => setPrivacyAccepted(true)} />
+      )}
+      <form
+        onSubmit={handleSubmit}
+        className="flex flex-col gap-5 rounded-2xl border border-ink/10 bg-card p-7 shadow-sm sm:p-8"
+      >
+        <input type="hidden" name="privacy_accepted" value={privacyAccepted ? "true" : "false"} />
+        <input type="hidden" name="privacy_policy_version" value={POLICY_VERSION} />
       <div>
         <label htmlFor="full_name" className={labelClass}>Full name</label>
         <input id="full_name" name="full_name" required autoComplete="name" className={inputClass} />
@@ -153,7 +162,7 @@ export default function SignupForm() {
 
       <button
         type="submit"
-        disabled={pending}
+        disabled={pending || !privacyAccepted}
         className="mt-2 w-full rounded-full bg-ink px-6 py-3 text-sm font-medium text-porcelain transition-colors hover:bg-teal disabled:opacity-70"
       >
         {pending ? "Creating your account…" : "Create account"}
@@ -163,6 +172,7 @@ export default function SignupForm() {
         After this, you&apos;ll be asked to verify your email and set up two-factor authentication
         to finish securing your account.
       </p>
-    </form>
+      </form>
+    </>
   );
 }

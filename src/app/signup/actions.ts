@@ -16,6 +16,8 @@ export async function signUp(formData: FormData) {
   const position = String(formData.get("position") ?? "");
   const province = String(formData.get("province") ?? "");
   const classYear = String(formData.get("class_year") ?? "");
+  const privacyAccepted = formData.get("privacy_accepted") === "true";
+  const privacyPolicyVersion = String(formData.get("privacy_policy_version") ?? "");
 
   if (!email) return { error: "Email is required." };
   if (password.length < MIN_PASSWORD_LENGTH) {
@@ -23,6 +25,7 @@ export async function signUp(formData: FormData) {
   }
   if (!fullName) return { error: "Full name is required." };
   if (isClinicOwner && !clinicName) return { error: "Clinic name is required for clinic owners." };
+  if (!privacyAccepted) return { error: "Please agree to the Privacy Policy to continue." };
 
   const admin = createAdminClient();
   const { error: createError } = await admin.auth.admin.createUser({
@@ -70,6 +73,17 @@ export async function signUp(formData: FormData) {
   await supabase
     .from("profiles")
     .update({ must_change_password: false })
+    .eq("id", signInData.user.id);
+
+  // Separate call, deliberately: these columns are from a later migration
+  // (0035_privacy_consent.sql). If that migration isn't applied yet in some
+  // environment, this failing must never take must_change_password with it.
+  await supabase
+    .from("profiles")
+    .update({
+      privacy_accepted_at: new Date().toISOString(),
+      privacy_policy_version: privacyPolicyVersion || null,
+    })
     .eq("id", signInData.user.id);
 
   redirect("/");

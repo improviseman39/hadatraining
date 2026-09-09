@@ -161,9 +161,12 @@ export async function claimSeat(formData: FormData): Promise<ClaimSeatResult> {
   const password = String(formData.get("password") ?? "");
   const fullName = String(formData.get("full_name") ?? "").trim();
   const email = String(formData.get("email") ?? "").trim().toLowerCase();
+  const privacyAccepted = formData.get("privacy_accepted") === "true";
+  const privacyPolicyVersion = String(formData.get("privacy_policy_version") ?? "");
 
   if (!fullName) return { error: "Enter your full name." };
   if (!EMAIL_RE.test(email)) return { error: "Enter a valid email address." };
+  if (!privacyAccepted) return { error: "Please agree to the Privacy Policy to continue." };
 
   const credential = await findGroupCredential(username);
   if (!credential || !credential.active || !verifyPassword(password, credential.password_hash)) {
@@ -226,6 +229,19 @@ export async function claimSeat(formData: FormData): Promise<ClaimSeatResult> {
   await admin
     .from("profiles")
     .update({ group_id: credential.group_id, must_change_password: false })
+    .eq("id", created.user.id);
+
+  // Deliberately a separate call from the update above: this one touches
+  // columns from a later migration (0035_privacy_consent.sql). If that
+  // migration hasn't been applied yet in some environment, this call
+  // failing must never take must_change_password down with it — that
+  // column is what keeps a seat on the shared class password.
+  await admin
+    .from("profiles")
+    .update({
+      privacy_accepted_at: new Date().toISOString(),
+      privacy_policy_version: privacyPolicyVersion || null,
+    })
     .eq("id", created.user.id);
 
   const deviceToken = randomBytes(32).toString("hex");

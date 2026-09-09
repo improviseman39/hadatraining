@@ -5,6 +5,8 @@ import Link from "next/link";
 import { login, claimSeat } from "@/lib/actions/classLogin";
 import { createClient } from "@/lib/supabase/client";
 import MfaChallenge from "@/components/MfaChallenge";
+import PrivacyConsentModal from "@/components/PrivacyConsentModal";
+import { POLICY_VERSION } from "@/lib/privacyPolicy";
 
 type Step = "credentials" | "profile" | "mfa";
 
@@ -39,6 +41,7 @@ export default function LoginForm({ signupEnabled }: { signupEnabled: boolean })
   const [firstName, setFirstName] = useState("");
   const [surname, setSurname] = useState("");
   const [email, setEmail] = useState("");
+  const [privacyAccepted, setPrivacyAccepted] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [slow, setSlow] = useState(false);
   const [pending, startTransition] = useTransition();
@@ -121,15 +124,21 @@ export default function LoginForm({ signupEnabled }: { signupEnabled: boolean })
 
   if (step === "profile") {
     return (
-      <form
-        onSubmit={handleProfileSubmit}
-        className="rounded-2xl border border-ink/10 bg-card p-7 shadow-sm sm:p-8"
-      >
-        <div className="flex flex-col gap-5">
-          <p className="text-sm leading-relaxed text-muted">
-            First time on this device — tell us who you are before we set up
-            your access.
-          </p>
+      <>
+        {!privacyAccepted && (
+          <PrivacyConsentModal onAgree={() => setPrivacyAccepted(true)} />
+        )}
+        <form
+          onSubmit={handleProfileSubmit}
+          className="rounded-2xl border border-ink/10 bg-card p-7 shadow-sm sm:p-8"
+        >
+          <input type="hidden" name="privacy_accepted" value={privacyAccepted ? "true" : "false"} />
+          <input type="hidden" name="privacy_policy_version" value={POLICY_VERSION} />
+          <div className="flex flex-col gap-5">
+            <p className="text-sm leading-relaxed text-muted">
+              First time on this device — tell us who you are before we set up
+              your access.
+            </p>
 
           <div className="grid grid-cols-1 gap-5 sm:grid-cols-2">
             <div>
@@ -194,13 +203,14 @@ export default function LoginForm({ signupEnabled }: { signupEnabled: boolean })
 
           <button
             type="submit"
-            disabled={pending}
+            disabled={pending || !privacyAccepted}
             className="w-full rounded-full bg-ink px-6 py-3 text-sm font-medium text-porcelain transition-colors hover:bg-teal disabled:opacity-70"
           >
             {pending ? (slow ? "Still setting up…" : "Setting up…") : "Continue"}
           </button>
         </div>
-      </form>
+        </form>
+      </>
     );
   }
 
