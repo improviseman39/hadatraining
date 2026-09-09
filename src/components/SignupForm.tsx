@@ -39,6 +39,8 @@ export default function SignupForm() {
       )}
       <form
         onSubmit={handleSubmit}
+        // See the identical comment in LoginForm.tsx's profile step.
+        inert={!privacyAccepted}
         className="flex flex-col gap-5 rounded-2xl border border-ink/10 bg-card p-7 shadow-sm sm:p-8"
       >
         <input type="hidden" name="privacy_accepted" value={privacyAccepted ? "true" : "false"} />

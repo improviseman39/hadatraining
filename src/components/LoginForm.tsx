@@ -130,6 +130,10 @@ export default function LoginForm({ signupEnabled }: { signupEnabled: boolean })
         )}
         <form
           onSubmit={handleProfileSubmit}
+          // Keyboard/assistive-tech users can't tab into or submit this
+          // form while the consent popup sits on top of it — otherwise the
+          // popup would only be a *visual* gate, not an actual one.
+          inert={!privacyAccepted}
           className="rounded-2xl border border-ink/10 bg-card p-7 shadow-sm sm:p-8"
         >
           <input type="hidden" name="privacy_accepted" value={privacyAccepted ? "true" : "false"} />
