@@ -36,8 +36,8 @@ const EN: { intro: string[]; sections: Section[] } = {
     {
       heading: "Who else sees it",
       body: [
-        "Supabase, our database and authentication provider, stores your account and course-progress data on our behalf.",
-        "Vimeo hosts the video lessons you watch; playing a video may share standard technical information (such as your IP address) with Vimeo under their own privacy policy.",
+        "A specialized third-party cloud database and authentication provider stores your account and course-progress data securely on our behalf, under a data-processing agreement that limits them to our instructions.",
+        "A specialized third-party video-hosting provider hosts the video lessons you watch; playing a video may share standard technical information (such as your IP address) with that provider.",
         "We do not share your personal data with any other third party except where required by law.",
       ],
     },
@@ -103,8 +103,8 @@ const TH: { intro: string[]; sections: Section[] } = {
     {
       heading: "ใครอีกบ้างที่เห็นข้อมูลของท่าน",
       body: [
-        "Supabase ผู้ให้บริการฐานข้อมูลและระบบยืนยันตัวตนของเรา จัดเก็บข้อมูลบัญชีและความคืบหน้าการเรียนของท่านในนามของเรา",
-        "Vimeo เป็นผู้ให้บริการโฮสต์วิดีโอบทเรียนที่ท่านรับชม การเล่นวิดีโออาจมีการส่งข้อมูลทางเทคนิคพื้นฐาน (เช่น IP address) ไปยัง Vimeo ภายใต้นโยบายความเป็นส่วนตัวของ Vimeo เอง",
+        "ผู้ให้บริการฐานข้อมูลและระบบยืนยันตัวตนบุคคลที่สามซึ่งเชี่ยวชาญด้านนี้โดยเฉพาะ จัดเก็บข้อมูลบัญชีและความคืบหน้าการเรียนของท่านอย่างปลอดภัยในนามของเรา ภายใต้ข้อตกลงการประมวลผลข้อมูลที่จำกัดให้ดำเนินการตามคำสั่งของเราเท่านั้น",
+        "ผู้ให้บริการโฮสต์วิดีโอบุคคลที่สามซึ่งเชี่ยวชาญด้านนี้โดยเฉพาะ เป็นผู้โฮสต์วิดีโอบทเรียนที่ท่านรับชม การเล่นวิดีโออาจมีการส่งข้อมูลทางเทคนิคพื้นฐาน (เช่น IP address) ไปยังผู้ให้บริการรายนั้น",
         "เราจะไม่แบ่งปันข้อมูลส่วนบุคคลของท่านกับบุคคลที่สามรายอื่นใด เว้นแต่กฎหมายกำหนด",
       ],
     },

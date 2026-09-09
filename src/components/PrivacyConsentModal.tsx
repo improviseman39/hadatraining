@@ -4,14 +4,14 @@ import { useState } from "react";
 
 const POINTS_EN = [
   "We collect your name, email, and course activity to run your account and track your progress.",
-  "Video lessons are hosted by Vimeo; your account data is stored via Supabase.",
+  "Your account data and video lessons are stored and hosted by trusted third-party service providers on our behalf.",
   "We never sell your data or use it for advertising.",
   "You can request access, correction, or deletion at any time via Contact us.",
 ];
 
 const POINTS_TH = [
   "เราเก็บชื่อ อีเมล และกิจกรรมการเรียนของท่าน เพื่อดูแลบัญชีและติดตามความคืบหน้า",
-  "วิดีโอบทเรียนโฮสต์โดย Vimeo ส่วนข้อมูลบัญชีจัดเก็บผ่าน Supabase",
+  "ข้อมูลบัญชีและวิดีโอบทเรียนของท่านจัดเก็บและโฮสต์โดยผู้ให้บริการบุคคลที่สามที่เชื่อถือได้ในนามของเรา",
   "เราไม่ขายข้อมูลของท่านหรือนำไปใช้เพื่อการโฆษณา",
   "ท่านสามารถขอเข้าถึง แก้ไข หรือลบข้อมูลได้ทุกเมื่อผ่าน Contact us",
 ];
