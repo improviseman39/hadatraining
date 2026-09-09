@@ -1,10 +1,11 @@
 "use server";
 
-import { randomBytes } from "crypto";
+import { randomBytes, randomInt, createHash } from "crypto";
 import { cookies } from "next/headers";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { verifyPassword, hashToken } from "@/lib/classCredentials";
+import { sendEmail } from "@/lib/resend";
 
 const DEVICE_COOKIE_NAME = "hada_seat";
 const DEVICE_COOKIE_MAX_AGE_SECONDS = 60 * 60 * 24 * 365; // ~1 year
@@ -18,6 +19,19 @@ const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 type LoginResult = { error: string } | { needsProfile: true } | { success: true };
 type ClaimSeatResult = { error: string } | { success: true };
 type PasswordResetResult = { error: string } | { isClassSeat: true } | { success: true };
+type ReclaimResult = { error: string } | { success: true };
+
+const RECLAIM_OTP_LENGTH = 6;
+const RECLAIM_OTP_TTL_MINUTES = 10;
+const RECLAIM_MAX_ATTEMPTS = 5;
+
+function generateReclaimCode(): string {
+  return String(randomInt(0, 10 ** RECLAIM_OTP_LENGTH)).padStart(RECLAIM_OTP_LENGTH, "0");
+}
+
+function hashReclaimCode(code: string): string {
+  return createHash("sha256").update(code).digest("hex");
+}
 
 type GroupCredential = {
   id: string;
@@ -334,4 +348,162 @@ export async function currentUserIsSeat(): Promise<boolean> {
   } = await supabase.auth.getUser();
   if (!user) return false;
   return isSeatProfile(user.id);
+}
+
+/**
+ * A live (not admin-revoked) seat belonging to `email`, inside `groupId` —
+ * what "move my seat to this device" needs to find before it'll email a
+ * code. Deliberately requires the group_id match too, not just the email:
+ * without it, someone who knows one cohort's shared password could probe
+ * arbitrary emails against a *different* cohort's roster.
+ */
+async function findLiveSeatForReclaim(
+  email: string,
+  groupId: string
+): Promise<{ userId: string; seatId: string } | null> {
+  const admin = createAdminClient();
+  const { data: profile } = await admin
+    .from("profiles")
+    .select("id, group_id")
+    .eq("email", email)
+    .maybeSingle();
+  if (!profile || profile.group_id !== groupId) return null;
+
+  const { data: seat } = await admin
+    .from("group_seats")
+    .select("id, revoked_at")
+    .eq("user_id", profile.id)
+    .eq("group_id", groupId)
+    .maybeSingle();
+  if (!seat || seat.revoked_at) return null;
+
+  return { userId: profile.id, seatId: seat.id };
+}
+
+const RECLAIM_NOT_FOUND_ERROR =
+  "We couldn't find an active seat for that email in this class. Check the address, or ask your coordinator.";
+
+/**
+ * Step 1 of "I've registered before, but this is a new device": re-verifies
+ * the shared class credential (same reasoning as claimSeat() — never trust
+ * that the caller already went through login() in this session), then
+ * emails a one-time code to the seat's own address before anything about
+ * the seat is touched.
+ */
+export async function requestSeatReclaim(formData: FormData): Promise<ReclaimResult> {
+  const username = String(formData.get("username") ?? "").trim();
+  const password = String(formData.get("password") ?? "");
+  const email = String(formData.get("email") ?? "").trim().toLowerCase();
+
+  if (!EMAIL_RE.test(email)) return { error: "Enter a valid email address." };
+
+  const credential = await findGroupCredential(username);
+  if (!credential || !credential.active || !verifyPassword(password, credential.password_hash)) {
+    return { error: "That class username or password isn't right." };
+  }
+
+  const seat = await findLiveSeatForReclaim(email, credential.group_id);
+  if (!seat) return { error: RECLAIM_NOT_FOUND_ERROR };
+
+  const admin = createAdminClient();
+  const code = generateReclaimCode();
+  const { error: insertError } = await admin.from("login_otp_codes").insert({
+    user_id: seat.userId,
+    code_hash: hashReclaimCode(code),
+    expires_at: new Date(Date.now() + RECLAIM_OTP_TTL_MINUTES * 60_000).toISOString(),
+  });
+  if (insertError) return { error: insertError.message };
+
+  const sendResult = await sendEmail(
+    email,
+    "Move your HADA seat to this device",
+    `Your verification code is ${code}.\n\nEnter it on the sign-in page to move your class seat to this device. It expires in ${RECLAIM_OTP_TTL_MINUTES} minutes.\n\nIf you didn't request this, you can safely ignore this email — your seat hasn't been changed.`
+  );
+  if (sendResult.error) return { error: sendResult.error };
+  return { success: true };
+}
+
+/**
+ * Step 2: on a correct code, moves the *existing* seat's device token to
+ * this browser (updating group_seats in place, not creating a new row —
+ * user_id is unique on that table) and signs in, instead of creating a
+ * second account for the same person. The old device's cookie stops
+ * matching immediately, same effect as an admin-triggered revoke.
+ */
+export async function confirmSeatReclaim(formData: FormData): Promise<ClaimSeatResult> {
+  const username = String(formData.get("username") ?? "").trim();
+  const password = String(formData.get("password") ?? "");
+  const email = String(formData.get("email") ?? "").trim().toLowerCase();
+  const code = String(formData.get("code") ?? "").trim();
+
+  if (!/^\d{6}$/.test(code)) return { error: "Enter the 6-digit code." };
+
+  const credential = await findGroupCredential(username);
+  if (!credential || !credential.active || !verifyPassword(password, credential.password_hash)) {
+    return { error: "That class username or password isn't right." };
+  }
+
+  const seat = await findLiveSeatForReclaim(email, credential.group_id);
+  if (!seat) return { error: RECLAIM_NOT_FOUND_ERROR };
+
+  const admin = createAdminClient();
+  const { data: outstanding } = await admin
+    .from("login_otp_codes")
+    .select("id, code_hash, expires_at, attempt_count")
+    .eq("user_id", seat.userId)
+    .is("consumed_at", null)
+    .order("created_at", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+
+  if (!outstanding) {
+    return { error: "That code isn't right. Check for a more recent email, or send a new one." };
+  }
+  if (new Date(outstanding.expires_at) < new Date()) {
+    return { error: "That code has expired. Send a new one." };
+  }
+  if (outstanding.attempt_count >= RECLAIM_MAX_ATTEMPTS) {
+    return { error: "Too many incorrect attempts. Send a new code." };
+  }
+  if (outstanding.code_hash !== hashReclaimCode(code)) {
+    await admin
+      .from("login_otp_codes")
+      .update({ attempt_count: outstanding.attempt_count + 1 })
+      .eq("id", outstanding.id);
+    return { error: "That code isn't right. Check for a more recent email, or send a new one." };
+  }
+
+  await admin
+    .from("login_otp_codes")
+    .update({ consumed_at: new Date().toISOString() })
+    .eq("id", outstanding.id);
+
+  const deviceToken = randomBytes(32).toString("hex");
+  const { error: updateError } = await admin
+    .from("group_seats")
+    .update({ device_token_hash: hashToken(deviceToken), last_seen_at: new Date().toISOString() })
+    .eq("id", seat.seatId);
+  if (updateError) return { error: updateError.message };
+
+  const cookieStore = await cookies();
+  cookieStore.set(DEVICE_COOKIE_NAME, deviceToken, {
+    httpOnly: true,
+    secure: process.env.NODE_ENV === "production",
+    sameSite: "lax",
+    maxAge: DEVICE_COOKIE_MAX_AGE_SECONDS,
+    path: "/",
+  });
+
+  const signInResult = await establishSeatSession(email);
+  if (signInResult.error) return { error: signInResult.error };
+
+  // Best-effort — a failed notification email must never block the person
+  // from actually getting into their own account.
+  await sendEmail(
+    email,
+    "Your HADA account was signed in on a new device",
+    "Your class-login seat was just moved to a new device using your email verification code. If this wasn't you, please contact us immediately via the Contact us button on the site."
+  );
+
+  return { success: true };
 }

@@ -28,7 +28,7 @@ export default async function AdminUsersPage() {
         .select("group_id, username, seat_limit, active"),
       supabase
         .from("group_seats")
-        .select("id, group_id, claimed_at, last_seen_at, revoked_at")
+        .select("id, group_id, user_id, claimed_at, last_seen_at, revoked_at")
         .is("revoked_at", null)
         .order("claimed_at"),
       supabase.from("site_settings").select("public_signup_enabled").eq("id", true).single(),
@@ -43,10 +43,16 @@ export default async function AdminUsersPage() {
 
   const credentialByGroup = new Map((credentials ?? []).map((c) => [c.group_id, c]));
   const seatsByGroup = new Map<string, typeof seats>();
+  // A live seat's user_id — used to keep "Reset password" out of reach for
+  // a class-login seat account, since setting one would force it through
+  // /onboarding/set-password and let it drift onto a personal password,
+  // defeating the entire point of the shared class credential.
+  const seatUserIds = new Set<string>();
   for (const seat of seats ?? []) {
     const list = seatsByGroup.get(seat.group_id) ?? [];
     list.push(seat);
     seatsByGroup.set(seat.group_id, list);
+    seatUserIds.add(seat.user_id);
   }
 
   return (
@@ -118,6 +124,7 @@ export default async function AdminUsersPage() {
                 }}
                 groups={groupList}
                 isSelf={profile.id === currentUser?.id}
+                isSeat={seatUserIds.has(profile.id)}
               />
             ))}
           </tbody>

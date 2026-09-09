@@ -2,13 +2,13 @@
 
 import { useState, useTransition } from "react";
 import Link from "next/link";
-import { login, claimSeat } from "@/lib/actions/classLogin";
+import { login, claimSeat, requestSeatReclaim, confirmSeatReclaim } from "@/lib/actions/classLogin";
 import { createClient } from "@/lib/supabase/client";
 import MfaChallenge from "@/components/MfaChallenge";
 import PrivacyConsentModal from "@/components/PrivacyConsentModal";
 import { POLICY_VERSION } from "@/lib/privacyPolicy";
 
-type Step = "credentials" | "profile" | "mfa";
+type Step = "credentials" | "profile" | "mfa" | "reclaim-email" | "reclaim-code";
 
 // After this long with no response, reassure the person it's still
 // working rather than leaving a bare "Logging in…" that looks frozen —
@@ -42,6 +42,8 @@ export default function LoginForm({ signupEnabled }: { signupEnabled: boolean })
   const [surname, setSurname] = useState("");
   const [email, setEmail] = useState("");
   const [privacyAccepted, setPrivacyAccepted] = useState(false);
+  const [reclaimEmail, setReclaimEmail] = useState("");
+  const [reclaimCode, setReclaimCode] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [slow, setSlow] = useState(false);
   const [pending, startTransition] = useTransition();
@@ -118,8 +120,191 @@ export default function LoginForm({ signupEnabled }: { signupEnabled: boolean })
     });
   }
 
+  function handleReclaimEmailSubmit(event: React.FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    setError(null);
+    setSlow(false);
+    const formData = new FormData();
+    formData.set("username", identifier);
+    formData.set("password", password);
+    formData.set("email", reclaimEmail);
+    const slowTimer = window.setTimeout(() => setSlow(true), SLOW_RESPONSE_MS);
+
+    startTransition(async () => {
+      try {
+        const result = await requestSeatReclaim(formData);
+        window.clearTimeout(slowTimer);
+        if ("error" in result) {
+          setError(result.error);
+          return;
+        }
+        setStep("reclaim-code");
+      } catch {
+        window.clearTimeout(slowTimer);
+        setError(RETRY_MESSAGE);
+      }
+    });
+  }
+
+  function handleReclaimCodeSubmit(event: React.FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    setError(null);
+    setSlow(false);
+    const formData = new FormData();
+    formData.set("username", identifier);
+    formData.set("password", password);
+    formData.set("email", reclaimEmail);
+    formData.set("code", reclaimCode);
+    const slowTimer = window.setTimeout(() => setSlow(true), SLOW_RESPONSE_MS);
+
+    startTransition(async () => {
+      try {
+        const result = await confirmSeatReclaim(formData);
+        window.clearTimeout(slowTimer);
+        if ("error" in result) {
+          setError(result.error);
+          return;
+        }
+        await afterSignIn();
+      } catch {
+        window.clearTimeout(slowTimer);
+        setError(RETRY_MESSAGE);
+      }
+    });
+  }
+
   if (step === "mfa") {
     return <MfaChallenge onVerified={() => { window.location.href = "/"; }} />;
+  }
+
+  if (step === "reclaim-email") {
+    return (
+      <form
+        onSubmit={handleReclaimEmailSubmit}
+        className="rounded-2xl border border-ink/10 bg-card p-7 shadow-sm sm:p-8"
+      >
+        <div className="flex flex-col gap-5">
+          <p className="text-sm leading-relaxed text-muted">
+            Already registered on another device? Enter the email you used
+            before, and we&apos;ll send a code to move your seat here.
+          </p>
+
+          <div>
+            <label htmlFor="reclaim-email" className="mb-2 block text-sm font-medium text-ink">
+              Email address
+            </label>
+            <input
+              id="reclaim-email"
+              type="email"
+              required
+              autoComplete="email"
+              placeholder="you@clinic.com"
+              value={reclaimEmail}
+              onChange={(event) => setReclaimEmail(event.target.value)}
+              className="w-full rounded-lg border border-ink/15 bg-porcelain px-4 py-2.5 text-ink placeholder:text-muted/60 focus:border-teal focus:outline-none focus:ring-2 focus:ring-teal/30"
+            />
+          </div>
+
+          {pending && slow && (
+            <p className="text-sm text-muted">
+              Still working — this can take a little longer than usual right
+              after an update to the site. No need to refresh or resubmit.
+            </p>
+          )}
+
+          {error && (
+            <p role="alert" className="text-sm font-medium text-terracotta">
+              {error}
+            </p>
+          )}
+
+          <button
+            type="submit"
+            disabled={pending}
+            className="w-full rounded-full bg-ink px-6 py-3 text-sm font-medium text-porcelain transition-colors hover:bg-teal disabled:opacity-70"
+          >
+            {pending ? (slow ? "Still working…" : "Sending code…") : "Send code"}
+          </button>
+
+          <button
+            type="button"
+            onClick={() => {
+              setStep("profile");
+              setError(null);
+            }}
+            className="text-center text-xs font-medium text-teal hover:underline"
+          >
+            &larr; Back
+          </button>
+        </div>
+      </form>
+    );
+  }
+
+  if (step === "reclaim-code") {
+    return (
+      <form
+        onSubmit={handleReclaimCodeSubmit}
+        className="rounded-2xl border border-ink/10 bg-card p-7 shadow-sm sm:p-8"
+      >
+        <div className="flex flex-col gap-5">
+          <p className="text-sm leading-relaxed text-muted">
+            We&apos;ve sent a 6-digit code to {reclaimEmail || "your email"}.
+            Enter it below to move your seat to this device.
+          </p>
+
+          <div>
+            <label htmlFor="reclaim-code" className="mb-2 block text-sm font-medium text-ink">
+              Verification code
+            </label>
+            <input
+              id="reclaim-code"
+              inputMode="numeric"
+              autoComplete="one-time-code"
+              required
+              maxLength={6}
+              placeholder="123456"
+              value={reclaimCode}
+              onChange={(event) => setReclaimCode(event.target.value.replace(/\D/g, ""))}
+              className="w-full rounded-lg border border-ink/15 bg-porcelain px-4 py-2.5 text-center text-lg tracking-[0.3em] text-ink placeholder:tracking-normal placeholder:text-muted/60 focus:border-teal focus:outline-none focus:ring-2 focus:ring-teal/30"
+            />
+          </div>
+
+          {pending && slow && (
+            <p className="text-sm text-muted">
+              Still working — this can take a little longer than usual right
+              after an update to the site. No need to refresh or resubmit.
+            </p>
+          )}
+
+          {error && (
+            <p role="alert" className="text-sm font-medium text-terracotta">
+              {error}
+            </p>
+          )}
+
+          <button
+            type="submit"
+            disabled={pending || reclaimCode.length !== 6}
+            className="w-full rounded-full bg-ink px-6 py-3 text-sm font-medium text-porcelain transition-colors hover:bg-teal disabled:opacity-70"
+          >
+            {pending ? (slow ? "Still working…" : "Verifying…") : "Verify & move my seat"}
+          </button>
+
+          <button
+            type="button"
+            onClick={() => {
+              setStep("reclaim-email");
+              setReclaimCode("");
+              setError(null);
+            }}
+            className="text-center text-xs font-medium text-teal hover:underline"
+          >
+            &larr; Back
+          </button>
+        </div>
+      </form>
+    );
   }
 
   if (step === "profile") {
@@ -211,6 +396,18 @@ export default function LoginForm({ signupEnabled }: { signupEnabled: boolean })
             className="w-full rounded-full bg-ink px-6 py-3 text-sm font-medium text-porcelain transition-colors hover:bg-teal disabled:opacity-70"
           >
             {pending ? (slow ? "Still setting up…" : "Setting up…") : "Continue"}
+          </button>
+
+          <button
+            type="button"
+            onClick={() => {
+              setReclaimEmail(email);
+              setStep("reclaim-email");
+              setError(null);
+            }}
+            className="text-center text-xs font-medium text-teal hover:underline"
+          >
+            Already registered before? This is just a new device
           </button>
         </div>
         </form>

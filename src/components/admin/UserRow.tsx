@@ -21,10 +21,15 @@ type Profile = {
 export default function UserRow({
   profile,
   isSelf,
+  isSeat,
   groups,
 }: {
   profile: Profile;
   isSelf: boolean;
+  /** A class-login seat — its "password" is deliberately never used (every
+   * sign-in goes through the shared class credential or a device-token
+   * magic link instead), so resetting one here would just be forgotten. */
+  isSeat: boolean;
   groups: { id: string; name: string }[];
 }) {
   const [role, setRole] = useState(profile.role);
@@ -135,14 +140,16 @@ export default function UserRow({
       </td>
       <td className="px-4 py-3 text-right">
         <div className="flex items-center justify-end gap-1.5">
-          <button
-            type="button"
-            onClick={handleResetPassword}
-            disabled={pending}
-            className="rounded-full border border-ink/15 px-3 py-1 text-xs font-medium text-ink transition-colors hover:border-teal hover:text-teal disabled:opacity-30"
-          >
-            Reset password
-          </button>
+          {!isSeat && (
+            <button
+              type="button"
+              onClick={handleResetPassword}
+              disabled={pending}
+              className="rounded-full border border-ink/15 px-3 py-1 text-xs font-medium text-ink transition-colors hover:border-teal hover:text-teal disabled:opacity-30"
+            >
+              Reset password
+            </button>
+          )}
           <button
             type="button"
             onClick={handleResetMfa}
@@ -169,6 +176,12 @@ export default function UserRow({
         {mfaResetDone && (
           <p className="mt-1.5 text-xs font-medium text-teal">
             2FA cleared — they&apos;ll set up a new authenticator app on next login.
+          </p>
+        )}
+        {isSeat && (
+          <p className="mt-1.5 text-xs text-muted">
+            Class seat — for a new device, they can use &quot;Already registered
+            before?&quot; on the login page themselves.
           </p>
         )}
       </td>
