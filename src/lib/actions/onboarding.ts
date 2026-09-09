@@ -2,6 +2,7 @@
 
 import { randomInt, createHash } from "crypto";
 import { createClient } from "@/lib/supabase/server";
+import { createAdminClient } from "@/lib/supabase/admin";
 import { sendEmail } from "@/lib/resend";
 
 const OTP_LENGTH = 6;
@@ -141,11 +142,23 @@ export async function resetMyMfa() {
     return { error: "Please verify the emailed code again, then try resetting once more." };
   }
 
-  const { data: factors, error: listError } = await supabase.auth.mfa.listFactors();
+  // Supabase's own supabase.auth.mfa.unenroll() refuses to remove a
+  // *verified* factor unless the session is already at aal2 — exactly the
+  // level someone who lost their device can never reach. The admin API
+  // has no such requirement, since it isn't the session proving its own
+  // right to unenroll; the emailed-code check above is what stands in for
+  // that proof instead.
+  const admin = createAdminClient();
+  const { data: factors, error: listError } = await admin.auth.admin.mfa.listFactors({
+    userId: user.id,
+  });
   if (listError) return { error: listError.message };
 
-  for (const factor of factors?.totp ?? []) {
-    const { error } = await supabase.auth.mfa.unenroll({ factorId: factor.id });
+  for (const factor of factors?.factors ?? []) {
+    const { error } = await admin.auth.admin.mfa.deleteFactor({
+      id: factor.id,
+      userId: user.id,
+    });
     if (error) return { error: error.message };
   }
 
