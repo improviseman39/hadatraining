@@ -4,6 +4,7 @@ import "./globals.css";
 import SiteHeader from "@/components/SiteHeader";
 import SiteFooter from "@/components/SiteFooter";
 import RequestWidget from "@/components/RequestWidget";
+import BackToTop from "@/components/BackToTop";
 import { AuthProvider } from "@/context/AuthContext";
 import { RequestWidgetProvider } from "@/context/RequestWidgetContext";
 import { createClient } from "@/lib/supabase/server";
@@ -118,6 +119,7 @@ export default async function RootLayout({
               {...socialLinks}
             />
             <RequestWidget {...socialLinks} />
+            <BackToTop />
           </RequestWidgetProvider>
         </AuthProvider>
       </body>

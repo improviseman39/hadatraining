@@ -6,7 +6,7 @@ import { formatAnnouncementDate } from "@/lib/formatAnnouncementDate";
 
 /**
  * Compact preview so "Latest at HADA" is visible alongside the curriculum
- * intro without scrolling — the full UpdatesCarousel further down the page
+ * intro without scrolling — the full UpdatesGrid further down the page
  * still has the complete list with descriptions.
  */
 export default function HeroLatestPreview({ items }: { items: Announcement[] }) {

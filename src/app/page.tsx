@@ -2,22 +2,29 @@ import Image from "next/image";
 import Link from "next/link";
 import { unsplashUrl } from "@/data/sessions";
 import { createClient } from "@/lib/supabase/server";
-import { mapAnnouncement } from "@/lib/supabase/mappers";
-import UpdatesCarousel from "@/components/UpdatesCarousel";
+import { mapAnnouncement, mapQaEntry } from "@/lib/supabase/mappers";
+import UpdatesGrid from "@/components/UpdatesGrid";
 import HeroLoginButton from "@/components/HeroLoginButton";
 import HeroLatestPreview from "@/components/HeroLatestPreview";
+import QaAccordion from "@/components/QaAccordion";
+import WhyHada from "@/components/WhyHada";
+import JoinCta from "@/components/JoinCta";
 
 export const dynamic = "force-dynamic";
 
 export default async function HomePage() {
   const supabase = await createClient();
 
-  const [{ count: sessionCount }, { data: announcementRows }] = await Promise.all([
+  const [{ count: sessionCount }, { data: announcementRows }, { data: qaRows }] = await Promise.all([
     // Only top-level sessions count toward the headline number — nested
     // sub-topics are part of their parent's scope, not a session of their own.
     supabase.from("sessions").select("*", { count: "exact", head: true }).is("parent_id", null),
     supabase.from("announcements").select("*").order("position"),
+    // Same table/columns as /qa — just the first few, as a teaser.
+    supabase.from("qa_entries").select("id, question, answer, position").order("position").limit(4),
   ]);
+
+  const qaEntries = (qaRows ?? []).map(mapQaEntry);
 
   // Once an announcement's last relevant day has passed, drop it from the
   // public site — unless the admin explicitly pinned it to stay visible.
@@ -73,7 +80,7 @@ export default async function HomePage() {
                 href="/curriculum"
                 className="rounded-full bg-teal px-6 py-3 text-sm font-medium text-porcelain transition-colors hover:bg-teal-dark"
               >
-                Explore the curriculum
+                Explore Curriculum
               </Link>
               <HeroLoginButton />
             </div>
@@ -83,7 +90,29 @@ export default async function HomePage() {
         </div>
       </section>
 
-      <UpdatesCarousel items={announcements} />
+      <UpdatesGrid items={announcements} />
+
+      {qaEntries.length > 0 && (
+        <section id="faq" className="border-b border-ink/10 bg-card">
+          <div className="container-page py-16 sm:py-20">
+            <div className="grid grid-cols-1 gap-10 lg:grid-cols-[1.1fr_1fr] lg:items-start">
+              <QaAccordion entries={qaEntries} />
+              <div className="relative hidden h-80 overflow-hidden rounded-2xl lg:block">
+                <Image
+                  src={unsplashUrl("1579154204601-01588f351e67", 900, 70)}
+                  alt=""
+                  fill
+                  sizes="40vw"
+                  className="object-cover"
+                />
+              </div>
+            </div>
+          </div>
+        </section>
+      )}
+
+      <WhyHada />
+      <JoinCta />
     </>
   );
 }
