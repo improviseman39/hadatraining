@@ -8,6 +8,29 @@ import { useRequestWidget } from "@/context/RequestWidgetContext";
 import { createClient } from "@/lib/supabase/client";
 import Image from "next/image";
 import SiteSearch from "@/components/SiteSearch";
+import NavDropdown from "@/components/NavDropdown";
+import { categoryOrder } from "@/data/sessions";
+
+const ChevronDown = ({ open }: { open: boolean }) => (
+  <svg
+    width="12"
+    height="12"
+    viewBox="0 0 24 24"
+    fill="none"
+    xmlns="http://www.w3.org/2000/svg"
+    aria-hidden="true"
+    className={`shrink-0 transition-transform ${open ? "rotate-180" : ""}`}
+  >
+    <path d="M6 9l6 6 6-6" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+  </svg>
+);
+
+const PersonIcon = () => (
+  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+    <circle cx="12" cy="8" r="4" stroke="currentColor" strokeWidth="2" />
+    <path d="M4 20c1.5-4 5-6 8-6s6.5 2 8 6" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+  </svg>
+);
 
 export default function SiteHeader({
   headerTitle,
@@ -18,13 +41,15 @@ export default function SiteHeader({
   headerSubtitle: string;
   logoUrl: string | null;
 }) {
-  const { isMember, isReady, role, logout } = useAuth();
+  const { user, isMember, isReady, role, logout } = useAuth();
   const { openWidget } = useRequestWidget();
   const isStaff = role === "admin" || role === "super_admin";
   const pathname = usePathname();
   const onSessionPage = pathname?.startsWith("/sessions/") ?? false;
   const [newRequestCount, setNewRequestCount] = useState(0);
   const [menuOpen, setMenuOpen] = useState(false);
+
+  const fullName = (user?.user_metadata?.full_name as string | undefined) ?? null;
 
   useEffect(() => {
     if (!isStaff) {
@@ -115,70 +140,160 @@ export default function SiteHeader({
         <div className="flex items-center gap-1 sm:gap-2 lg:gap-5">
           {/* Full nav — only once there's room for every item on one line */}
           <nav className="hidden items-center gap-5 text-sm lg:flex">
-            <Link
-              href="/curriculum"
-              className="text-ink/80 transition-colors hover:text-teal"
+            <NavDropdown
+              trigger={(open) => (
+                <span className="flex items-center gap-1 text-ink/80 transition-colors hover:text-teal">
+                  Curriculum
+                  <ChevronDown open={open} />
+                </span>
+              )}
             >
-              Curriculum
-            </Link>
+              {(close) => (
+                <>
+                  {categoryOrder.map((category) => (
+                    <Link
+                      key={category}
+                      href={`/curriculum?category=${encodeURIComponent(category)}`}
+                      onClick={close}
+                      className="block px-4 py-2 text-sm text-ink/80 transition-colors hover:bg-ink/5 hover:text-teal"
+                    >
+                      {category}
+                    </Link>
+                  ))}
+                </>
+              )}
+            </NavDropdown>
+
             <Link
               href="/#updates"
               className="text-ink/80 transition-colors hover:text-teal"
             >
               Updates
             </Link>
+
+            <NavDropdown
+              trigger={(open) => (
+                <span className="flex items-center gap-1 text-ink/80 transition-colors hover:text-teal">
+                  Contact
+                  <ChevronDown open={open} />
+                </span>
+              )}
+            >
+              {(close) => (
+                <>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      close();
+                      openWidget();
+                    }}
+                    className="block w-full px-4 py-2 text-left text-sm text-ink/80 transition-colors hover:bg-ink/5 hover:text-teal"
+                  >
+                    Contact Us
+                  </button>
+                  <Link
+                    href="/#faq"
+                    onClick={close}
+                    className="block px-4 py-2 text-sm text-ink/80 transition-colors hover:bg-ink/5 hover:text-teal"
+                  >
+                    FAQ
+                  </Link>
+                  <Link
+                    href="/qa"
+                    onClick={close}
+                    className="block px-4 py-2 text-sm text-ink/80 transition-colors hover:bg-ink/5 hover:text-teal"
+                  >
+                    Q&amp;A
+                  </Link>
+                </>
+              )}
+            </NavDropdown>
+
             <Link
-              href="/qa"
+              href="/timetable"
               className="text-ink/80 transition-colors hover:text-teal"
             >
-              Q&amp;A
+              Booking
             </Link>
           </nav>
 
           <SiteSearch />
 
           {/* Full-nav member/CTA controls — desktop only, hidden below lg */}
-          <div className="hidden items-center gap-3 lg:flex">
+          <div className="hidden items-center lg:flex">
             {isReady && isMember ? (
-              <>
-                <Link
-                  href="/timetable"
-                  className="rounded-full border border-ink/15 px-3 py-1.5 text-xs font-medium text-ink transition-colors hover:border-teal hover:text-teal"
-                >
-                  Timetable
-                </Link>
-                <button
-                  type="button"
-                  onClick={openWidget}
-                  className="rounded-full border border-ink/15 px-3 py-1.5 text-xs font-medium text-ink transition-colors hover:border-teal hover:text-teal"
-                >
-                  Contact us
-                </button>
-                {isStaff && (
-                  <Link
-                    href="/admin"
-                    className="inline-flex items-center gap-1.5 rounded-full border border-teal/30 px-3 py-1.5 text-xs font-medium text-teal-dark transition-colors hover:border-teal"
-                  >
-                    Admin
-                    {newRequestCount > 0 && (
-                      <span className="flex h-5 min-w-5 items-center justify-center rounded-full bg-terracotta px-1.5 text-xs font-semibold text-porcelain">
-                        {newRequestCount}
-                      </span>
-                    )}
-                  </Link>
+              <NavDropdown
+                align="right"
+                panelClassName="w-72"
+                trigger={(open) => (
+                  <span className="flex items-center gap-2 rounded-full border border-ink/15 bg-card py-1.5 pl-1.5 pr-3 text-sm font-medium text-ink transition-colors hover:border-teal">
+                    <span className="flex h-7 w-7 items-center justify-center rounded-full bg-ink/5 text-ink/60">
+                      <PersonIcon />
+                    </span>
+                    Member
+                    <ChevronDown open={open} />
+                  </span>
                 )}
-                <span className="flex items-center gap-1.5 rounded-full bg-teal/10 px-3 py-1.5 text-xs font-medium text-teal-dark">
-                  <span aria-hidden="true" className="h-1.5 w-1.5 rounded-full bg-teal" />
-                  Member
-                </span>
-                <button
-                  type="button"
-                  onClick={logout}
-                  className="rounded-full border border-ink/15 px-4 py-2 font-medium text-ink transition-colors hover:border-terracotta hover:text-terracotta"
-                >
-                  Log out
-                </button>
-              </>
+              >
+                {(close) => (
+                  <>
+                    <div className="flex items-center gap-3 border-b border-ink/10 px-4 pb-3">
+                      <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-ink/5 text-ink/60">
+                        <PersonIcon />
+                      </span>
+                      <div className="min-w-0">
+                        {fullName && (
+                          <p className="truncate text-sm font-medium text-ink">{fullName}</p>
+                        )}
+                        <p className="truncate text-xs text-muted">{user?.email}</p>
+                      </div>
+                    </div>
+                    <div className="pt-1">
+                      <Link
+                        href="/timetable"
+                        onClick={close}
+                        className="block px-4 py-2 text-sm text-ink/80 transition-colors hover:bg-ink/5 hover:text-teal"
+                      >
+                        Timetable
+                      </Link>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          close();
+                          openWidget();
+                        }}
+                        className="block w-full px-4 py-2 text-left text-sm text-ink/80 transition-colors hover:bg-ink/5 hover:text-teal"
+                      >
+                        Contact us
+                      </button>
+                      {isStaff && (
+                        <Link
+                          href="/admin"
+                          onClick={close}
+                          className="flex items-center gap-1.5 px-4 py-2 text-sm text-teal-dark transition-colors hover:bg-teal/10"
+                        >
+                          Admin
+                          {newRequestCount > 0 && (
+                            <span className="flex h-5 min-w-5 items-center justify-center rounded-full bg-terracotta px-1.5 text-xs font-semibold text-porcelain">
+                              {newRequestCount}
+                            </span>
+                          )}
+                        </Link>
+                      )}
+                      <button
+                        type="button"
+                        onClick={() => {
+                          close();
+                          logout();
+                        }}
+                        className="block w-full border-t border-ink/10 px-4 py-2 text-left text-sm text-ink/80 transition-colors hover:bg-ink/5 hover:text-terracotta"
+                      >
+                        Log out
+                      </button>
+                    </div>
+                  </>
+                )}
+              </NavDropdown>
             ) : (
               <Link
                 href="/login"
@@ -226,19 +341,33 @@ export default function SiteHeader({
           className="border-t border-ink/10 bg-porcelain px-6 py-4 shadow-lg lg:hidden"
         >
           <div className="flex flex-col gap-1 text-base">
-            <Link
-              href="/curriculum"
-              onClick={() => setMenuOpen(false)}
-              className="rounded-lg px-3 py-2.5 text-ink/80 transition-colors hover:bg-ink/5 hover:text-teal"
-            >
+            <p className="mt-1 px-3 text-xs font-medium uppercase tracking-wide text-muted">
               Curriculum
-            </Link>
+            </p>
+            {categoryOrder.map((category) => (
+              <Link
+                key={category}
+                href={`/curriculum?category=${encodeURIComponent(category)}`}
+                onClick={() => setMenuOpen(false)}
+                className="rounded-lg px-3 py-2.5 text-ink/80 transition-colors hover:bg-ink/5 hover:text-teal"
+              >
+                {category}
+              </Link>
+            ))}
+
             <Link
               href="/#updates"
               onClick={() => setMenuOpen(false)}
-              className="rounded-lg px-3 py-2.5 text-ink/80 transition-colors hover:bg-ink/5 hover:text-teal"
+              className="mt-2 rounded-lg px-3 py-2.5 text-ink/80 transition-colors hover:bg-ink/5 hover:text-teal"
             >
               Updates
+            </Link>
+            <Link
+              href="/#faq"
+              onClick={() => setMenuOpen(false)}
+              className="rounded-lg px-3 py-2.5 text-ink/80 transition-colors hover:bg-ink/5 hover:text-teal"
+            >
+              FAQ
             </Link>
             <Link
               href="/qa"
@@ -247,23 +376,23 @@ export default function SiteHeader({
             >
               Q&amp;A
             </Link>
+            <Link
+              href="/timetable"
+              onClick={() => setMenuOpen(false)}
+              className="rounded-lg px-3 py-2.5 text-ink/80 transition-colors hover:bg-ink/5 hover:text-teal"
+            >
+              Booking
+            </Link>
+            <button
+              type="button"
+              onClick={handleContactClick}
+              className="rounded-lg px-3 py-2.5 text-left text-ink/80 transition-colors hover:bg-ink/5 hover:text-teal"
+            >
+              Contact us
+            </button>
 
             {isReady && isMember && (
               <>
-                <Link
-                  href="/timetable"
-                  onClick={() => setMenuOpen(false)}
-                  className="rounded-lg px-3 py-2.5 text-ink/80 transition-colors hover:bg-ink/5 hover:text-teal"
-                >
-                  Timetable
-                </Link>
-                <button
-                  type="button"
-                  onClick={handleContactClick}
-                  className="rounded-lg px-3 py-2.5 text-left text-ink/80 transition-colors hover:bg-ink/5 hover:text-teal"
-                >
-                  Contact us
-                </button>
                 {isStaff && (
                   <Link
                     href="/admin"
@@ -279,14 +408,14 @@ export default function SiteHeader({
                   </Link>
                 )}
                 <div className="mt-2 flex items-center justify-between border-t border-ink/10 pt-3">
-                  <span className="flex items-center gap-1.5 rounded-full bg-teal/10 px-3 py-1.5 text-xs font-medium text-teal-dark">
-                    <span aria-hidden="true" className="h-1.5 w-1.5 rounded-full bg-teal" />
-                    Member
+                  <span className="min-w-0">
+                    {fullName && <span className="block truncate text-sm font-medium text-ink">{fullName}</span>}
+                    <span className="block truncate text-xs text-muted">{user?.email}</span>
                   </span>
                   <button
                     type="button"
                     onClick={handleLogoutClick}
-                    className="rounded-full border border-ink/15 px-4 py-2 text-sm font-medium text-ink transition-colors hover:border-terracotta hover:text-terracotta"
+                    className="shrink-0 rounded-full border border-ink/15 px-4 py-2 text-sm font-medium text-ink transition-colors hover:border-terracotta hover:text-terracotta"
                   >
                     Log out
                   </button>
