@@ -116,26 +116,28 @@ export default async function CurriculumPage({
 
   return (
     <div>
-      <div className="border-b border-ink/10">
-        <nav className="container-page flex gap-6 overflow-x-auto text-sm">
-          {categoriesWithSessions.map((category) => {
-            const isActive = category === activeCategory;
-            return (
-              <Link
-                key={category}
-                href={`/curriculum?category=${encodeURIComponent(category)}`}
-                className={`shrink-0 border-b-2 py-4 font-medium transition-colors ${
-                  isActive
-                    ? "border-teal text-teal-dark"
-                    : "border-transparent text-muted hover:text-ink"
-                }`}
-              >
-                {category}
-              </Link>
-            );
-          })}
-        </nav>
-      </div>
+      {/* Full-bleed segmented tab strip (not a container-page row) — each
+          category is an equal-width block with its own background, the
+          active one shown "raised" (page-background fill, bold text)
+          against the others' tinted fill, divided by hairlines. */}
+      <nav className="flex border-b border-ink/10 bg-ink/5 text-sm">
+        {categoriesWithSessions.map((category) => {
+          const isActive = category === activeCategory;
+          return (
+            <Link
+              key={category}
+              href={`/curriculum?category=${encodeURIComponent(category)}`}
+              className={`flex-1 border-r border-ink/10 px-6 py-4 font-medium transition-colors last:border-r-0 ${
+                isActive
+                  ? "bg-porcelain text-teal-dark font-semibold"
+                  : "text-ink/70 hover:bg-ink/[0.03] hover:text-ink"
+              }`}
+            >
+              {category}
+            </Link>
+          );
+        })}
+      </nav>
 
       <div className="container-page py-8 sm:py-10">
         <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
