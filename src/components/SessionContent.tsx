@@ -7,7 +7,6 @@ import VideoSlot from "@/components/VideoSlot";
 import PdfSlot from "@/components/PdfSlot";
 import TextBlock from "@/components/TextBlock";
 import LockGate from "@/components/LockGate";
-import NotesPanel from "@/components/NotesPanel";
 import { markBlockViewed } from "@/lib/actions/progress";
 
 const defaultTitles: Record<ContentBlock["type"], string> = {
@@ -65,9 +64,14 @@ export default function SessionContent({
         const progress = progressByBlockId[block.id];
         return (
           <div key={block.id} id={`block-${block.id}`} className="scroll-mt-24">
-            <h2 className="mb-3 font-serif text-lg text-ink">
-              {block.title ?? defaultTitles[block.type]}
-            </h2>
+            {/* Video blocks carry their own title in VideoSlot's header bar
+                now (matches PdfSlot's existing header pattern) - an outer
+                heading here would just repeat the same text above it. */}
+            {block.type !== "video" && (
+              <h2 className="mb-3 font-serif text-lg text-ink">
+                {block.title ?? defaultTitles[block.type]}
+              </h2>
+            )}
             {block.type === "video" && (
               <VideoSlot
                 hasVideo={!!block.videoUrl}
@@ -109,8 +113,6 @@ export default function SessionContent({
           </div>
         );
       })}
-
-      <NotesPanel slug={session.slug} />
     </div>
   );
 }

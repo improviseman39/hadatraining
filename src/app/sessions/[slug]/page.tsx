@@ -1,13 +1,11 @@
-import Image from "next/image";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { mapSession, mapSessionWithBlocks } from "@/lib/supabase/mappers";
 import SessionContent, { type BlockProgress } from "@/components/SessionContent";
-import SessionCard from "@/components/SessionCard";
-import SubTopicsBanner from "@/components/SubTopicsBanner";
 import SubTopicsSidebar from "@/components/SubTopicsSidebar";
+import NotesPanel from "@/components/NotesPanel";
 import type { SessionWithBlocks } from "@/types/content";
 
 type Crumb = { slug: string; title: string };
@@ -56,10 +54,6 @@ async function signPdfBlocks(blocks: SessionWithBlocks["blocks"]) {
 }
 
 export const dynamic = "force-dynamic";
-
-function pad(n: number): string {
-  return n.toString().padStart(2, "0");
-}
 
 export async function generateMetadata(props: { params: Promise<{ slug: string }> }) {
   const params = await props.params;
@@ -143,9 +137,40 @@ export default async function SessionPage(
       : undefined;
   }
 
-  // Prev/next only makes sense for top-level sessions — a sub-topic is
-  // discovered by browsing into its parent's page instead, via the
-  // breadcrumb and sub-topics list below, not a linear chain.
+  const breadcrumb = await buildBreadcrumb(supabase, session.parentId);
+
+  const { data: childRows } = await supabase
+    .from("sessions")
+    .select("*")
+    .eq("parent_id", session.id)
+    .order("position");
+  const children = (childRows ?? []).map(mapSession);
+
+  // Viewing a sub-topic itself has no children of its own — show its
+  // siblings instead (including itself, highlighted), fetched via the
+  // shared parent, so the list of "other sessions in here" stays visible
+  // no matter which sub-topic you're currently on. The main session also
+  // gets its own row in that same list, fetched in full since the sidebar
+  // shows its photo too.
+  let siblings: typeof children = [];
+  let parentSession: typeof children[number] | null = null;
+  if (children.length === 0 && session.parentId) {
+    const [{ data: siblingRows }, { data: parentRow }] = await Promise.all([
+      supabase.from("sessions").select("*").eq("parent_id", session.parentId).order("position"),
+      supabase.from("sessions").select("*").eq("id", session.parentId).single(),
+    ]);
+    siblings = (siblingRows ?? []).map(mapSession);
+    parentSession = parentRow ? mapSession(parentRow) : null;
+  }
+
+  const subTopics = children.length > 0 ? children : siblings;
+  const isSiblingList = children.length === 0 && siblings.length > 0;
+  const listTitle = isSiblingList ? (parentSession?.title ?? session.title) : session.title;
+
+  // Prev/next: a top-level session pages through other top-level sessions;
+  // a sub-topic pages through its siblings instead (siblings already
+  // includes the current session, fetched above) — a linear "next lecture"
+  // chain within the module, matching the mockup's sub-topic pager.
   let prevSession: { slug: string; title: string } | null = null;
   let nextSession: { slug: string; title: string } | null = null;
   if (!session.parentId) {
@@ -161,202 +186,194 @@ export default async function SessionPage(
       currentIndex >= 0 && currentIndex < neighbors.length - 1
         ? neighbors[currentIndex + 1]
         : null;
+  } else if (isSiblingList) {
+    const ordered = [...siblings].sort((a, b) => a.position - b.position);
+    const currentIndex = ordered.findIndex((s) => s.slug === session.slug);
+    prevSession = currentIndex > 0 ? ordered[currentIndex - 1] : null;
+    nextSession =
+      currentIndex >= 0 && currentIndex < ordered.length - 1
+        ? ordered[currentIndex + 1]
+        : null;
   }
 
-  const breadcrumb = await buildBreadcrumb(supabase, session.parentId);
-
-  const { data: childRows } = await supabase
-    .from("sessions")
-    .select("*")
-    .eq("parent_id", session.id)
-    .order("position");
-  const children = (childRows ?? []).map(mapSession);
-
-  // Viewing a sub-topic itself has no children of its own — show its
-  // siblings instead (including itself, highlighted), fetched via the
-  // shared parent, so the list of "other sessions in here" stays visible
-  // no matter which sub-topic you're currently on. The main session also
-  // gets its own row in that same list (not just a small link above it),
-  // fetched in full since the sidebar shows its photo too.
-  let siblings: typeof children = [];
-  let parentSession: typeof children[number] | null = null;
-  if (children.length === 0 && session.parentId) {
-    const [{ data: siblingRows }, { data: parentRow }] = await Promise.all([
-      supabase.from("sessions").select("*").eq("parent_id", session.parentId).order("position"),
-      supabase.from("sessions").select("*").eq("id", session.parentId).single(),
-    ]);
-    siblings = (siblingRows ?? []).map(mapSession);
-    parentSession = parentRow ? mapSession(parentRow) : null;
+  // Completion % per row shown in the sidebar's lecture list — one query
+  // against the same view the curriculum page already uses
+  // (my_session_progress, 0029_progress_views.sql), scoped to whichever
+  // ids are actually in that list.
+  const completionBySlug: Record<string, number> = {};
+  if (user) {
+    const listedSessions = isSiblingList ? [...(parentSession ? [parentSession] : []), ...siblings] : children;
+    const listedIds = listedSessions.map((s) => s.id);
+    if (listedIds.length > 0) {
+      const { data: rows } = await supabase
+        .from("my_session_progress")
+        .select("session_id, percent_complete")
+        .in("session_id", listedIds);
+      const idToSlug = new Map(listedSessions.map((s) => [s.id, s.slug]));
+      for (const row of rows ?? []) {
+        const slug = idToSlug.get(row.session_id);
+        if (slug) completionBySlug[slug] = row.percent_complete;
+      }
+    }
+    // This page's own completion was already computed above from its own
+    // blocks directly — reuse it rather than trusting the view to be
+    // freshly in sync with a block just watched this same request.
+    if (sessionCompletionPercent !== undefined) {
+      completionBySlug[session.slug] = sessionCompletionPercent;
+    }
   }
 
-  const subTopics = children.length > 0 ? children : siblings;
-  const isSiblingList = children.length === 0 && siblings.length > 0;
-  const parentTitle = parentSession?.title ?? null;
+  // "Continue where you left off" — for a module overview (has children),
+  // the real resume target usually lives inside a child lecture, not this
+  // page's own blocks, so this looks at the single most-recently-active
+  // block across this session AND its children. For a sub-topic or a
+  // childless session, the existing single-session resumeBlockId above
+  // already covers it.
+  let resumeTarget: { title: string; duration: string | null; href: string } | null = null;
+  if (user && children.length > 0) {
+    const { data: recentRows } = await supabase
+      .from("content_block_progress")
+      .select("content_block_id, session_id, last_active_at, sessions(slug)")
+      .in("session_id", [session.id, ...children.map((c) => c.id)])
+      .order("last_active_at", { ascending: false })
+      .limit(1);
+    const recent = recentRows?.[0];
+    const rawTarget = recent?.sessions;
+    const targetRow = (Array.isArray(rawTarget) ? rawTarget[0] : rawTarget) as { slug: string } | undefined;
+    if (recent && targetRow) {
+      const targetFull = targetRow.slug === session.slug ? session : children.find((c) => c.slug === targetRow.slug);
+      if (targetFull) {
+        resumeTarget = {
+          title: targetFull.title,
+          duration: targetFull.duration,
+          href:
+            recent.session_id === session.id
+              ? `#block-${recent.content_block_id}`
+              : `/sessions/${targetFull.slug}#block-${recent.content_block_id}`,
+        };
+      }
+    }
+  } else if (user && resumeBlockId) {
+    resumeTarget = { title: session.title, duration: session.duration, href: `#block-${resumeBlockId}` };
+  }
+
+  const breadcrumbTrail: { label: string; href: string | null }[] = [
+    { label: "Curriculum", href: "/curriculum" },
+    { label: session.category, href: `/curriculum?category=${encodeURIComponent(session.category)}` },
+    ...breadcrumb.map((crumb) => ({ label: crumb.title, href: `/sessions/${crumb.slug}` })),
+    { label: session.title, href: null },
+  ];
 
   return (
-    <article>
-      <div className="relative h-64 w-full overflow-hidden border-b border-ink/10 sm:h-80">
-        <Image
-          src={session.imageUrl}
-          alt=""
-          fill
-          priority
-          sizes="100vw"
-          className="object-cover"
-        />
-        <div className="absolute inset-0 bg-gradient-to-t from-ink/90 via-ink/40 to-ink/10" />
-        <div className="container-page relative flex h-full flex-col justify-end pb-8">
-          <div className="absolute top-6 flex w-fit flex-wrap items-center gap-2 text-sm font-medium text-porcelain">
-            <Link
-              href="/curriculum"
-              className="flex items-center gap-1.5 rounded-full border border-porcelain/30 bg-ink/40 px-3 py-1.5 backdrop-blur-sm transition-colors hover:border-teal hover:bg-ink/60"
-            >
-              <span aria-hidden="true">&larr;</span> Back to curriculum
-            </Link>
-            {breadcrumb.map((crumb) => (
-              <span key={crumb.slug} className="flex items-center gap-1.5 text-porcelain/90">
-                <span aria-hidden="true" className="text-porcelain/40">/</span>
-                <Link href={`/sessions/${crumb.slug}`} className="transition-colors hover:text-teal">
-                  {crumb.title}
-                </Link>
-              </span>
-            ))}
-          </div>
-          <div className="flex items-center gap-4">
-            <span className="font-serif text-3xl text-porcelain/50 sm:text-4xl">
-              {pad(session.position)}
-            </span>
-            <span className="rounded-full border border-porcelain/30 px-3 py-1 text-xs font-medium uppercase tracking-wide text-porcelain/90">
-              {session.category}
-            </span>
-            {session.duration && (
-              <span className="text-xs font-medium uppercase tracking-wide text-porcelain/70">
-                {session.duration}
-              </span>
-            )}
-            {!session.isFree && (
-              <span className="flex items-center gap-1.5 rounded-full bg-terracotta/90 px-3 py-1 text-xs font-medium text-porcelain">
-                Members only
-              </span>
-            )}
-            {sessionCompletionPercent !== undefined && (
-              <span
-                className={`flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-medium ${
-                  sessionCompletionPercent > 0
-                    ? "bg-teal/90 text-porcelain"
-                    : "border border-porcelain/30 text-porcelain/90"
-                }`}
-              >
-                {sessionCompletionPercent === 100 ? "Completed" : `${sessionCompletionPercent}% complete`}
-              </span>
-            )}
-          </div>
-          <h1 className="mt-3 font-serif text-3xl font-medium text-porcelain sm:text-4xl lg:text-5xl">
-            {session.title}
-          </h1>
-        </div>
-      </div>
+    <article className="container-page py-8 sm:py-10">
+      <Link
+        href="/curriculum"
+        className="inline-flex w-fit items-center gap-1.5 rounded-full border border-ink/15 px-3 py-1.5 text-xs font-medium text-ink/80 transition-colors hover:border-teal hover:text-teal"
+      >
+        <span aria-hidden="true">&larr;</span> Back to curriculum
+      </Link>
 
-      <div className="container-page py-12 sm:py-16">
-        <div className={subTopics.length > 0 ? "lg:grid lg:grid-cols-[280px_1fr] lg:items-start lg:gap-10" : undefined}>
-          {subTopics.length > 0 && (
-            <aside className="hidden lg:sticky lg:top-24 lg:block">
-              <SubTopicsSidebar
-                subTopics={subTopics}
-                currentSlug={session.slug}
-                parentSession={isSiblingList ? parentSession : null}
-              />
-            </aside>
-          )}
-
-          <div className="min-w-0">
-            <p className="max-w-2xl text-base leading-relaxed text-muted sm:text-lg">
-              {session.summary}
-            </p>
-
-            {subTopics.length > 0 && (
-              <div className="lg:hidden">
-                <SubTopicsBanner
-                  count={subTopics.length}
-                  label={isSiblingList ? `More in ${parentTitle}` : undefined}
-                />
-              </div>
-            )}
-
-            {resumeBlockId && (
-              <a
-                href={`#block-${resumeBlockId}`}
-                className="mt-8 flex items-center gap-2 self-start rounded-full border border-teal/30 bg-teal/5 px-4 py-2 text-xs font-medium text-teal-dark transition-colors hover:border-teal sm:mt-10"
-              >
-                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
-                  <path d="M8 6.5v11l9-5.5-9-5.5z" fill="currentColor" />
-                </svg>
-                Continue where you left off
-              </a>
-            )}
-
-            <div className="mt-10 sm:mt-12">
-              <SessionContent session={session} progressByBlockId={progressByBlockId} />
-            </div>
-          </div>
-        </div>
-
-        {subTopics.length > 0 && (
-          <div id="sub-topics" className="mt-16 scroll-mt-24 border-t border-ink/10 pt-10 sm:mt-20 lg:hidden">
-            {isSiblingList && parentSession && (
-              <Link
-                href={`/sessions/${parentSession.slug}`}
-                className="mb-3 inline-flex items-center gap-1.5 text-sm font-medium text-teal transition-colors hover:text-teal-dark"
-              >
-                <span aria-hidden="true">&larr;</span> Back to {parentSession.title}
+      <nav aria-label="Breadcrumb" className="mt-4 flex flex-wrap items-center gap-x-1.5 gap-y-1 text-xs font-medium uppercase tracking-wide text-muted">
+        {breadcrumbTrail.map((crumb, index) => (
+          <span key={crumb.label} className="flex items-center gap-1.5">
+            {index > 0 && <span aria-hidden="true" className="text-ink/20">&rsaquo;</span>}
+            {crumb.href ? (
+              <Link href={crumb.href} className="transition-colors hover:text-teal">
+                {crumb.label}
               </Link>
+            ) : (
+              <span className="text-ink/60">{crumb.label}</span>
             )}
-            <h2 className="font-serif text-2xl text-ink">
-              {isSiblingList && parentTitle ? `More in ${parentTitle}` : "Inside this session"}
-            </h2>
-            <p className="mt-2 text-sm text-muted">
-              {subTopics.length} sub-topic{subTopics.length > 1 ? "s" : ""}
-            </p>
-            <div className="mt-6 grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3">
-              {subTopics.map((subTopic) => (
-                <SessionCard key={subTopic.slug} session={subTopic} />
-              ))}
-            </div>
-          </div>
-        )}
+          </span>
+        ))}
+      </nav>
 
-        <nav className="mt-16 flex flex-col gap-4 border-t border-ink/10 pt-8 sm:mt-20 sm:flex-row sm:items-center sm:justify-between">
-          {prevSession ? (
+      <h1 className="mt-2 font-serif text-2xl font-medium text-ink sm:text-3xl">
+        {session.title}
+      </h1>
+      <p className="mt-2 max-w-2xl text-sm leading-relaxed text-muted sm:text-base">
+        {session.summary}
+      </p>
+
+      <div className="mt-8 grid grid-cols-1 gap-8 lg:grid-cols-[1fr_320px] lg:items-start lg:gap-10">
+        <div className="min-w-0">
+          <SessionContent session={session} progressByBlockId={progressByBlockId} />
+        </div>
+
+        <aside className="flex flex-col gap-5 lg:sticky lg:top-24">
+          {resumeTarget && (
             <Link
-              href={`/sessions/${prevSession.slug}`}
-              className="group flex flex-1 flex-col rounded-xl border border-ink/10 p-4 transition-colors hover:border-teal/40 sm:p-5"
+              href={resumeTarget.href}
+              className="flex items-center gap-3 rounded-2xl border border-teal/20 bg-teal/5 p-4 transition-colors hover:border-teal/40"
             >
-              <span className="text-xs font-medium uppercase tracking-wide text-muted">
-                &larr; Previous
+              <span
+                aria-hidden="true"
+                className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-teal text-porcelain"
+              >
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor" xmlns="http://www.w3.org/2000/svg">
+                  <path d="M8 5v14l11-7z" />
+                </svg>
               </span>
-              <span className="mt-1 font-serif text-lg text-ink group-hover:text-teal">
-                {prevSession.title}
+              <div className="min-w-0 flex-1">
+                <p className="text-[11px] font-medium uppercase tracking-wide text-teal-dark">
+                  Continue where you left off
+                </p>
+                <p className="mt-0.5 truncate text-sm font-medium text-ink">
+                  {resumeTarget.title}
+                  {resumeTarget.duration && (
+                    <span className="font-normal text-muted"> &middot; {resumeTarget.duration}</span>
+                  )}
+                </p>
+              </div>
+              <span aria-hidden="true" className="shrink-0 text-teal">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                  <path d="M9 6l6 6-6 6" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+                </svg>
               </span>
             </Link>
-          ) : (
-            <div className="flex-1" />
           )}
-          {nextSession ? (
-            <Link
-              href={`/sessions/${nextSession.slug}`}
-              className="group flex flex-1 flex-col rounded-xl border border-ink/10 p-4 text-right transition-colors hover:border-teal/40 sm:p-5"
-            >
-              <span className="text-xs font-medium uppercase tracking-wide text-muted">
-                Next &rarr;
-              </span>
-              <span className="mt-1 font-serif text-lg text-ink group-hover:text-teal">
-                {nextSession.title}
-              </span>
-            </Link>
-          ) : (
-            <div className="flex-1" />
+
+          {subTopics.length > 0 && (
+            <SubTopicsSidebar
+              listTitle={listTitle}
+              subTopics={subTopics}
+              currentSlug={session.slug}
+              parentSession={isSiblingList ? parentSession : null}
+              completionBySlug={completionBySlug}
+            />
           )}
-        </nav>
+
+          <NotesPanel slug={session.slug} />
+
+          {(prevSession || nextSession) && (
+            <div className="flex flex-col gap-2">
+              {prevSession && (
+                <Link
+                  href={`/sessions/${prevSession.slug}`}
+                  className="group flex items-center gap-2 rounded-xl border border-ink/10 bg-card p-3 transition-colors hover:border-teal/40"
+                >
+                  <span aria-hidden="true" className="text-ink/40 group-hover:text-teal">&larr;</span>
+                  <span className="min-w-0 flex-1">
+                    <span className="block text-[11px] font-medium uppercase tracking-wide text-muted">Previous</span>
+                    <span className="block truncate text-sm font-medium text-ink group-hover:text-teal">{prevSession.title}</span>
+                  </span>
+                </Link>
+              )}
+              {nextSession && (
+                <Link
+                  href={`/sessions/${nextSession.slug}`}
+                  className="group flex items-center gap-2 rounded-xl border border-ink/10 bg-card p-3 text-right transition-colors hover:border-teal/40"
+                >
+                  <span className="min-w-0 flex-1">
+                    <span className="block text-[11px] font-medium uppercase tracking-wide text-muted">Next</span>
+                    <span className="block truncate text-sm font-medium text-ink group-hover:text-teal">{nextSession.title}</span>
+                  </span>
+                  <span aria-hidden="true" className="text-ink/40 group-hover:text-teal">&rarr;</span>
+                </Link>
+              )}
+            </div>
+          )}
+        </aside>
       </div>
     </article>
   );

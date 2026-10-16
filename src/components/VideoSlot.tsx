@@ -113,10 +113,27 @@ export default function VideoSlot({
         className={
           expanded
             ? "fixed inset-0 z-50 flex flex-col bg-ink p-4 sm:p-6"
-            : "relative mx-auto aspect-video w-full max-w-2xl overflow-hidden rounded-2xl border border-ink/10 bg-ink shadow-sm"
+            : "relative flex w-full flex-col overflow-hidden rounded-2xl border border-ink/10 bg-card shadow-sm"
         }
       >
-        <div className={expanded ? "relative min-h-0 flex-1" : "absolute inset-0"}>
+        {/* Same header-bar chrome as PdfSlot's "Session handout" row, so a
+            video block reads as the same kind of object as a handout block
+            instead of a bare, uncaptioned iframe. */}
+        <div className="flex items-center justify-between border-b border-ink/10 bg-card px-4 py-2.5">
+          <div className="flex min-w-0 items-center gap-2">
+            <span
+              aria-hidden="true"
+              className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-teal/10 text-teal"
+            >
+              <svg width="11" height="11" viewBox="0 0 24 24" fill="currentColor" xmlns="http://www.w3.org/2000/svg">
+                <path d="M8 6.5v11l9-5.5-9-5.5z" />
+              </svg>
+            </span>
+            <p className="truncate text-sm font-medium text-ink">{title}</p>
+          </div>
+          <ExpandButton expanded={expanded} onClick={toggle} label="video" />
+        </div>
+        <div className={expanded ? "relative min-h-0 flex-1 bg-ink" : "relative aspect-video w-full bg-ink"}>
           <iframe
             ref={iframeRef}
             src={videoUrl}
@@ -126,15 +143,12 @@ export default function VideoSlot({
             allowFullScreen
           />
         </div>
-        <div className="absolute right-3 top-3">
-          <ExpandButton expanded={expanded} onClick={toggle} label="video" />
-        </div>
       </div>
     );
   }
 
   return (
-    <div className="mx-auto flex aspect-video w-full max-w-2xl flex-col items-center justify-center gap-3 rounded-2xl border border-dashed border-ink/20 bg-ink/[0.03] px-6 text-center">
+    <div className="flex w-full flex-col items-center justify-center gap-3 rounded-2xl border border-dashed border-ink/20 bg-ink/[0.03] px-6 py-16 text-center">
       <span
         aria-hidden="true"
         className="flex h-12 w-12 items-center justify-center rounded-full border border-ink/15 text-teal"
