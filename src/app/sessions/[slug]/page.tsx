@@ -6,6 +6,7 @@ import { mapSession, mapSessionWithBlocks } from "@/lib/supabase/mappers";
 import SessionContent, { type BlockProgress } from "@/components/SessionContent";
 import SubTopicsSidebar from "@/components/SubTopicsSidebar";
 import NotesPanel from "@/components/NotesPanel";
+import SessionLayout from "@/components/SessionLayout";
 import type { SessionWithBlocks } from "@/types/content";
 
 type Crumb = { slug: string; title: string };
@@ -295,13 +296,11 @@ export default async function SessionPage(
         {session.summary}
       </p>
 
-      <div className="mt-8 grid grid-cols-1 gap-8 lg:grid-cols-[1fr_320px] lg:items-start lg:gap-10">
-        <div className="min-w-0">
-          <SessionContent session={session} progressByBlockId={progressByBlockId} />
-        </div>
-
-        <aside className="flex flex-col gap-5 lg:sticky lg:top-24">
-          {resumeTarget && (
+      <SessionLayout
+        main={<SessionContent session={session} progressByBlockId={progressByBlockId} />}
+        sidebar={
+          <>
+            {resumeTarget && (
             <Link
               href={resumeTarget.href}
               className="flex items-center gap-3 rounded-2xl border border-teal/20 bg-teal/5 p-4 transition-colors hover:border-teal/40"
@@ -373,8 +372,9 @@ export default async function SessionPage(
               )}
             </div>
           )}
-        </aside>
-      </div>
+          </>
+        }
+      />
     </article>
   );
 }
