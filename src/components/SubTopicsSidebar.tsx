@@ -6,8 +6,6 @@ function pad(n: number): string {
   return n.toString().padStart(2, "0");
 }
 
-type Row = { slug: string; title: string; imageUrl: string };
-
 /** Filled teal check (done), small teal bars (this is the current page),
  * or an empty ring (not started / in progress but not the current page) —
  * same three states the curriculum page's own cards already use, just as
@@ -38,44 +36,69 @@ function StatusIcon({ isCurrent, percent }: { isCurrent: boolean; percent: numbe
 }
 
 /**
- * One continuous lecture list for the session-page sidebar. When viewing a
- * sub-topic (`parentSession` set), the main session it belongs to is row
- * "00" at the top of the very same list, not a separate box above it — the
- * breadcrumb already handles "back to the main session" navigation, so this
- * list's only job is showing every lecture in the module side by side.
+ * The session-page sidebar's lecture list — headed by a small Category →
+ * Main session hierarchy so it's clear, without scrolling back up to the
+ * page's own breadcrumb, where every listed lecture sits: which category
+ * it's filed under, and which main session it belongs to (clickable to
+ * jump up a level, same as the page-level breadcrumb does). Below that,
+ * just the sub-topics themselves — the main session no longer appears as
+ * a disguised "00" row in its own lecture list, since the heading above
+ * already links back to it.
  */
 export default function SubTopicsSidebar({
-  listTitle,
+  category,
+  categoryHref,
+  moduleTitle,
+  moduleSlug,
+  isOnModulePage,
   subTopics,
   currentSlug,
-  parentSession,
   completionBySlug = {},
 }: {
-  /** Heading above the list — the module/top-level session's own title. */
-  listTitle: string;
+  /** The session's category (e.g. "Injectables") — links to that category's curriculum tab. */
+  category: string;
+  categoryHref: string;
+  /** The top-level session's own title (e.g. "HA Filler"). */
+  moduleTitle: string;
+  moduleSlug: string;
+  /** True when the page currently being viewed IS the main session itself
+   * (not one of its sub-topics) — in that case the title is the current
+   * page, so it renders as plain text rather than a link to itself. */
+  isOnModulePage: boolean;
   subTopics: Session[];
   currentSlug?: string;
-  /** Set only when viewing a sub-topic — the main session it belongs to. */
-  parentSession?: Row | null;
   /** 0-100 completion per session slug, for the trailing status icon. */
   completionBySlug?: Record<string, number>;
 }) {
-  const rows: Row[] = parentSession ? [parentSession, ...subTopics] : subTopics;
-
   return (
     <div className="rounded-2xl border border-ink/10 bg-card p-4 shadow-sm">
-      <h2 className="truncate px-1 font-serif text-base text-ink">{listTitle}</h2>
+      <Link
+        href={categoryHref}
+        className="inline-block px-1 text-[11px] font-medium uppercase tracking-wide text-muted transition-colors hover:text-teal"
+      >
+        {category}
+      </Link>
+      {isOnModulePage ? (
+        <h2 className="mt-1 truncate px-1 font-serif text-base text-ink">{moduleTitle}</h2>
+      ) : (
+        <Link
+          href={`/sessions/${moduleSlug}`}
+          className="mt-1 block truncate px-1 font-serif text-base text-ink transition-colors hover:text-teal"
+        >
+          {moduleTitle}
+        </Link>
+      )}
       <p className="mt-1 px-1 text-xs text-muted">
         {subTopics.length} Lecture{subTopics.length > 1 ? "s" : ""}
       </p>
       <ul className="mt-3 flex flex-col gap-1">
-        {rows.map((row, index) => {
-          const isCurrent = row.slug === currentSlug;
-          const percent = completionBySlug[row.slug] ?? 0;
+        {subTopics.map((subTopic, index) => {
+          const isCurrent = subTopic.slug === currentSlug;
+          const percent = completionBySlug[subTopic.slug] ?? 0;
           return (
-            <li key={row.slug}>
+            <li key={subTopic.slug}>
               <Link
-                href={`/sessions/${row.slug}`}
+                href={`/sessions/${subTopic.slug}`}
                 aria-current={isCurrent ? "page" : undefined}
                 className={`flex items-center gap-3 rounded-xl p-2 text-sm transition-colors ${
                   isCurrent
@@ -84,11 +107,11 @@ export default function SubTopicsSidebar({
                 }`}
               >
                 <div className="relative h-[30px] w-[30px] shrink-0 overflow-hidden rounded-lg bg-porcelain">
-                  <Image src={row.imageUrl} alt="" fill sizes="30px" className="object-cover" />
+                  <Image src={subTopic.imageUrl} alt="" fill sizes="30px" className="object-cover" />
                 </div>
                 <span className="min-w-0 flex-1 truncate">
-                  <span className="mr-1.5 text-xs font-medium text-muted">{pad(index)}</span>
-                  {row.title}
+                  <span className="mr-1.5 text-xs font-medium text-muted">{pad(index + 1)}</span>
+                  {subTopic.title}
                 </span>
                 <span
                   className={`shrink-0 ${isCurrent ? "text-teal-dark" : percent >= 100 ? "text-teal" : "text-ink/25"}`}

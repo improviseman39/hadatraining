@@ -45,7 +45,6 @@ export default function SiteHeader({
   const { openWidget } = useRequestWidget();
   const isStaff = role === "admin" || role === "super_admin";
   const pathname = usePathname();
-  const onSessionPage = pathname?.startsWith("/sessions/") ?? false;
   const [newRequestCount, setNewRequestCount] = useState(0);
   const [menuOpen, setMenuOpen] = useState(false);
 
@@ -124,17 +123,6 @@ export default function SiteHeader({
               </span>
             )}
           </Link>
-
-          {onSessionPage && (
-            <Link
-              href="/curriculum"
-              aria-label="Back to curriculum"
-              className="flex items-center gap-1.5 rounded-full border border-ink/15 px-2.5 py-1.5 text-xs font-medium text-ink/80 transition-colors hover:border-teal hover:text-teal sm:px-3"
-            >
-              <span aria-hidden="true">&larr;</span>
-              <span className="hidden sm:inline">Back to curriculum</span>
-            </Link>
-          )}
         </div>
 
         <div className="flex items-center gap-1 sm:gap-2 lg:gap-5">

@@ -166,7 +166,8 @@ export default async function SessionPage(
 
   const subTopics = children.length > 0 ? children : siblings;
   const isSiblingList = children.length === 0 && siblings.length > 0;
-  const listTitle = isSiblingList ? (parentSession?.title ?? session.title) : session.title;
+  const moduleTitle = isSiblingList ? (parentSession?.title ?? session.title) : session.title;
+  const moduleSlug = isSiblingList ? (parentSession?.slug ?? session.slug) : session.slug;
 
   // Prev/next: a top-level session pages through other top-level sessions;
   // a sub-topic pages through its siblings instead (siblings already
@@ -334,10 +335,13 @@ export default async function SessionPage(
 
           {subTopics.length > 0 && (
             <SubTopicsSidebar
-              listTitle={listTitle}
+              category={session.category}
+              categoryHref={`/curriculum?category=${encodeURIComponent(session.category)}`}
+              moduleTitle={moduleTitle}
+              moduleSlug={moduleSlug}
+              isOnModulePage={!isSiblingList}
               subTopics={subTopics}
               currentSlug={session.slug}
-              parentSession={isSiblingList ? parentSession : null}
               completionBySlug={completionBySlug}
             />
           )}
