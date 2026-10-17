@@ -4,7 +4,7 @@ import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { mapSession, mapSessionWithBlocks } from "@/lib/supabase/mappers";
 import SessionContent, { type BlockProgress } from "@/components/SessionContent";
-import SubTopicsSidebar from "@/components/SubTopicsSidebar";
+import CategoryTreeSidebar from "@/components/CategoryTreeSidebar";
 import NotesPanel from "@/components/NotesPanel";
 import SessionLayout from "@/components/SessionLayout";
 import type { SessionWithBlocks } from "@/types/content";
@@ -147,43 +147,24 @@ export default async function SessionPage(
     .order("position");
   const children = (childRows ?? []).map(mapSession);
 
-  // Viewing a sub-topic itself has no children of its own — show its
-  // siblings instead (including itself, highlighted), fetched via the
-  // shared parent, so the list of "other sessions in here" stays visible
-  // no matter which sub-topic you're currently on. The main session also
-  // gets its own row in that same list, fetched in full since the sidebar
-  // shows its photo too.
+  // Viewing a sub-topic itself has no children of its own — page through
+  // its siblings instead (needed below for Previous/Next), fetched via the
+  // shared parent.
   let siblings: typeof children = [];
-  let parentSession: typeof children[number] | null = null;
-  // Set only from a sub-topic page: the main session's own first content
-  // block, if it has any — lets the sidebar offer a direct shortcut to the
-  // module's own material (e.g. HA Filler's own overview slides) without
-  // first landing on its page and hunting for it there. Not needed while
-  // already viewing the module's own page, since that material is right
-  // there in the main column already.
-  let moduleMaterialBlockId: string | null = null;
   if (children.length === 0 && session.parentId) {
-    const [{ data: siblingRows }, { data: parentRow }] = await Promise.all([
-      supabase.from("sessions").select("*").eq("parent_id", session.parentId).order("position"),
-      supabase
-        .from("sessions")
-        .select("*, content_blocks(id)")
-        .eq("id", session.parentId)
-        .order("position", { foreignTable: "content_blocks" })
-        .single(),
-    ]);
+    const { data: siblingRows } = await supabase
+      .from("sessions")
+      .select("*")
+      .eq("parent_id", session.parentId)
+      .order("position");
     siblings = (siblingRows ?? []).map(mapSession);
-    parentSession = parentRow ? mapSession(parentRow) : null;
-    const parentBlocks = (parentRow as { content_blocks?: { id: string }[] } | null)?.content_blocks ?? [];
-    moduleMaterialBlockId = parentBlocks[0]?.id ?? null;
   }
 
-  const subTopics = children.length > 0 ? children : siblings;
   const isSiblingList = children.length === 0 && siblings.length > 0;
-  const moduleTitle = isSiblingList ? (parentSession?.title ?? session.title) : session.title;
-  const moduleSlug = isSiblingList ? (parentSession?.slug ?? session.slug) : session.slug;
-  const moduleMaterialHref =
-    isSiblingList && moduleMaterialBlockId ? `/sessions/${moduleSlug}#block-${moduleMaterialBlockId}` : null;
+  // The module whose branch should start expanded in the sidebar tree —
+  // this session itself if it's a top-level session, or its parent if
+  // it's a sub-topic.
+  const currentModuleId = isSiblingList ? (session.parentId ?? session.id) : session.id;
 
   // Prev/next: a top-level session pages through other top-level sessions;
   // a sub-topic pages through its siblings instead (siblings already
@@ -214,20 +195,67 @@ export default async function SessionPage(
         : null;
   }
 
-  // Completion % per row shown in the sidebar's lecture list — one query
+  // Full sidebar tree: every top-level session in this session's category,
+  // each with its own material blocks and sub-topics — lets the sidebar
+  // offer the whole category to browse (any session's material, any
+  // session's lectures), not just whatever's attached to the current page.
+  const { data: categoryTopLevelRows } = await supabase
+    .from("sessions")
+    .select("*")
+    .eq("category", session.category)
+    .is("parent_id", null)
+    .order("position");
+  const categoryTopLevel = (categoryTopLevelRows ?? []).map(mapSession);
+  const categoryTopLevelIds = categoryTopLevel.map((s) => s.id);
+
+  // categoryTopLevelIds is never empty in practice — this session's own
+  // module (itself, or its parent) is always one of the rows just fetched.
+  const [{ data: categoryBlockRows }, { data: categoryChildRows }] = await Promise.all([
+    supabase.from("content_blocks").select("id, title, session_id").in("session_id", categoryTopLevelIds).order("position"),
+    supabase.from("sessions").select("*").in("parent_id", categoryTopLevelIds).order("position"),
+  ]);
+
+  const materialsBySession = new Map<string, { id: string; title: string | null }[]>();
+  for (const row of categoryBlockRows ?? []) {
+    const list = materialsBySession.get(row.session_id) ?? [];
+    list.push({ id: row.id, title: row.title });
+    materialsBySession.set(row.session_id, list);
+  }
+  const subTopicsBySession = new Map<string, ReturnType<typeof mapSession>[]>();
+  for (const row of categoryChildRows ?? []) {
+    if (!row.parent_id) continue;
+    const list = subTopicsBySession.get(row.parent_id) ?? [];
+    list.push(mapSession(row));
+    subTopicsBySession.set(row.parent_id, list);
+  }
+
+  const categoryModules = categoryTopLevel.map((mod) => ({
+    id: mod.id,
+    slug: mod.slug,
+    title: mod.title,
+    imageUrl: mod.imageUrl,
+    materials: (materialsBySession.get(mod.id) ?? []).map((block, index) => ({
+      id: block.id,
+      label: block.title ?? `Session material ${index + 1}`,
+    })),
+    subTopics: (subTopicsBySession.get(mod.id) ?? []).sort((a, b) => a.position - b.position),
+  }));
+
+  // Completion % per sub-topic across the WHOLE category tree (any of
+  // which could be showing in the sidebar once expanded) — one query
   // against the same view the curriculum page already uses
-  // (my_session_progress, 0029_progress_views.sql), scoped to whichever
-  // ids are actually in that list.
+  // (my_session_progress, 0029_progress_views.sql).
   const completionBySlug: Record<string, number> = {};
   if (user) {
-    const listedSessions = isSiblingList ? [...(parentSession ? [parentSession] : []), ...siblings] : children;
-    const listedIds = listedSessions.map((s) => s.id);
-    if (listedIds.length > 0) {
+    const allSubTopicIds = categoryModules.flatMap((mod) => mod.subTopics.map((s) => s.id));
+    if (allSubTopicIds.length > 0) {
       const { data: rows } = await supabase
         .from("my_session_progress")
         .select("session_id, percent_complete")
-        .in("session_id", listedIds);
-      const idToSlug = new Map(listedSessions.map((s) => [s.id, s.slug]));
+        .in("session_id", allSubTopicIds);
+      const idToSlug = new Map(
+        categoryModules.flatMap((mod) => mod.subTopics.map((s) => [s.id, s.slug] as const))
+      );
       for (const row of rows ?? []) {
         const slug = idToSlug.get(row.session_id);
         if (slug) completionBySlug[slug] = row.percent_complete;
@@ -349,15 +377,12 @@ export default async function SessionPage(
             </Link>
           )}
 
-          {subTopics.length > 0 && (
-            <SubTopicsSidebar
+          {categoryModules.length > 0 && (
+            <CategoryTreeSidebar
               category={session.category}
               categoryHref={`/curriculum?category=${encodeURIComponent(session.category)}`}
-              moduleTitle={moduleTitle}
-              moduleSlug={moduleSlug}
-              isOnModulePage={!isSiblingList}
-              moduleMaterialHref={moduleMaterialHref}
-              subTopics={subTopics}
+              modules={categoryModules}
+              currentModuleId={currentModuleId}
               currentSlug={session.slug}
               completionBySlug={completionBySlug}
             />
