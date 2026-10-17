@@ -215,8 +215,18 @@ export default async function SessionPage(
     supabase.from("sessions").select("*").in("parent_id", categoryTopLevelIds).order("position"),
   ]);
 
+  // Sub-topics get their own material list too (not just the module) — a
+  // second query since their ids aren't known until categoryChildRows above
+  // has come back. .in() with an empty array just yields no rows.
+  const categoryChildIds = (categoryChildRows ?? []).map((row) => row.id);
+  const { data: categoryChildBlockRows } = await supabase
+    .from("content_blocks")
+    .select("id, title, session_id")
+    .in("session_id", categoryChildIds)
+    .order("position");
+
   const materialsBySession = new Map<string, { id: string; title: string | null }[]>();
-  for (const row of categoryBlockRows ?? []) {
+  for (const row of [...(categoryBlockRows ?? []), ...(categoryChildBlockRows ?? [])]) {
     const list = materialsBySession.get(row.session_id) ?? [];
     list.push({ id: row.id, title: row.title });
     materialsBySession.set(row.session_id, list);
@@ -229,16 +239,27 @@ export default async function SessionPage(
     subTopicsBySession.set(row.parent_id, list);
   }
 
+  const toMaterials = (sessionId: string) =>
+    (materialsBySession.get(sessionId) ?? []).map((block, index) => ({
+      id: block.id,
+      label: block.title ?? `Session material ${index + 1}`,
+    }));
+
   const categoryModules = categoryTopLevel.map((mod) => ({
     id: mod.id,
     slug: mod.slug,
     title: mod.title,
     imageUrl: mod.imageUrl,
-    materials: (materialsBySession.get(mod.id) ?? []).map((block, index) => ({
-      id: block.id,
-      label: block.title ?? `Session material ${index + 1}`,
-    })),
-    subTopics: (subTopicsBySession.get(mod.id) ?? []).sort((a, b) => a.position - b.position),
+    materials: toMaterials(mod.id),
+    subTopics: (subTopicsBySession.get(mod.id) ?? [])
+      .sort((a, b) => a.position - b.position)
+      .map((sub) => ({
+        id: sub.id,
+        slug: sub.slug,
+        title: sub.title,
+        imageUrl: sub.imageUrl,
+        materials: toMaterials(sub.id),
+      })),
   }));
 
   // Completion % per sub-topic across the WHOLE category tree (any of

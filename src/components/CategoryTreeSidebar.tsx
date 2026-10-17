@@ -16,7 +16,15 @@ export type ModuleNode = {
   /** This session's own content blocks, if it has any directly (e.g. an
    * overview handout) — every one listed, not just a single shortcut. */
   materials: { id: string; label: string }[];
-  subTopics: { id: string; slug: string; title: string; imageUrl: string }[];
+  subTopics: {
+    id: string;
+    slug: string;
+    title: string;
+    imageUrl: string;
+    /** This sub-topic's own content blocks, listed the same way as the
+     * module's — every one, not just a count. */
+    materials: { id: string; label: string }[];
+  }[];
 };
 
 const ChevronIcon = ({ expanded }: { expanded: boolean }) => (
@@ -75,7 +83,9 @@ function StatusIcon({ isCurrent, percent }: { isCurrent: boolean; percent: numbe
  * another session's lecture) without leaving the page or hunting through
  * the top nav. The session the page is currently on/under starts expanded;
  * every other session in the category starts collapsed to just its name,
- * one click away.
+ * one click away. Each sub-topic is, in turn, collapsible the same way to
+ * reveal its own material list — opening one swaps out the module's own
+ * material list just above, so only one material list shows at a time.
  */
 export default function CategoryTreeSidebar({
   category,
@@ -99,6 +109,15 @@ export default function CategoryTreeSidebar({
 }) {
   const [expandedId, setExpandedId] = useState(currentModuleId);
 
+  // Which sub-topic's own material list is open, scoped to whichever module
+  // is expanded — opening one replaces the module's own material list below
+  // (set at most one of "module materials" / "a sub-topic's materials"
+  // visible at a time, so the list doesn't show both and get cluttered).
+  // Starts open if the page itself is on that sub-topic.
+  const initialModule = modules.find((mod) => mod.id === currentModuleId);
+  const initialSubTopic = initialModule?.subTopics.find((sub) => sub.slug === currentSlug);
+  const [expandedSubId, setExpandedSubId] = useState(initialSubTopic?.id ?? "");
+
   return (
     <div className="rounded-2xl border border-ink/10 bg-card p-4 shadow-sm">
       <Link
@@ -118,7 +137,10 @@ export default function CategoryTreeSidebar({
               <div className="flex items-center gap-1.5">
                 <button
                   type="button"
-                  onClick={() => setExpandedId(isExpanded ? "" : mod.id)}
+                  onClick={() => {
+                    setExpandedId(isExpanded ? "" : mod.id);
+                    setExpandedSubId("");
+                  }}
                   aria-expanded={isExpanded}
                   aria-label={`${isExpanded ? "Collapse" : "Expand"} ${mod.title}`}
                   className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full hover:bg-ink/5"
@@ -137,7 +159,7 @@ export default function CategoryTreeSidebar({
 
               {isExpanded && (
                 <div className="ml-[26px] mt-1.5 flex flex-col gap-1">
-                  {mod.materials.length > 0 && (
+                  {mod.materials.length > 0 && !expandedSubId && (
                     <div className="flex flex-col gap-0.5 border-b border-ink/10 pb-1.5">
                       {mod.materials.map((material) => (
                         <Link
@@ -157,30 +179,65 @@ export default function CategoryTreeSidebar({
                   {mod.subTopics.map((subTopic, index) => {
                     const isCurrent = subTopic.slug === currentSlug;
                     const percent = completionBySlug[subTopic.slug] ?? 0;
+                    const hasMaterials = subTopic.materials.length > 0;
+                    const isSubExpanded = subTopic.id === expandedSubId;
                     return (
-                      <Link
-                        key={subTopic.slug}
-                        href={`/sessions/${subTopic.slug}`}
-                        aria-current={isCurrent ? "page" : undefined}
-                        className={`flex items-center gap-2.5 rounded-xl p-1.5 text-sm transition-colors ${
-                          isCurrent
-                            ? "bg-teal/10 text-teal-dark font-medium"
-                            : "text-ink/80 hover:bg-card hover:text-teal"
-                        }`}
-                      >
-                        <div className="relative h-[26px] w-[26px] shrink-0 overflow-hidden rounded-lg bg-porcelain">
-                          <Image src={subTopic.imageUrl} alt="" fill sizes="26px" className="object-cover" />
+                      <div key={subTopic.slug} className="flex flex-col gap-0.5">
+                        <div className="flex items-center gap-1">
+                          {hasMaterials ? (
+                            <button
+                              type="button"
+                              onClick={() => setExpandedSubId(isSubExpanded ? "" : subTopic.id)}
+                              aria-expanded={isSubExpanded}
+                              aria-label={`${isSubExpanded ? "Collapse" : "Expand"} ${subTopic.title} materials`}
+                              className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full hover:bg-ink/5"
+                            >
+                              <ChevronIcon expanded={isSubExpanded} />
+                            </button>
+                          ) : (
+                            <span className="w-5 shrink-0" aria-hidden="true" />
+                          )}
+                          <Link
+                            href={`/sessions/${subTopic.slug}`}
+                            aria-current={isCurrent ? "page" : undefined}
+                            className={`flex min-w-0 flex-1 items-center gap-2.5 rounded-xl p-1.5 text-sm transition-colors ${
+                              isCurrent
+                                ? "bg-teal/10 text-teal-dark font-medium"
+                                : "text-ink/80 hover:bg-card hover:text-teal"
+                            }`}
+                          >
+                            <div className="relative h-[26px] w-[26px] shrink-0 overflow-hidden rounded-lg bg-porcelain">
+                              <Image src={subTopic.imageUrl} alt="" fill sizes="26px" className="object-cover" />
+                            </div>
+                            <span className="min-w-0 flex-1 truncate">
+                              <span className="mr-1.5 text-xs font-medium text-muted">{pad(index + 1)}</span>
+                              {subTopic.title}
+                            </span>
+                            <span
+                              className={`shrink-0 ${isCurrent ? "text-teal-dark" : percent >= 100 ? "text-teal" : "text-ink/25"}`}
+                            >
+                              <StatusIcon isCurrent={isCurrent} percent={percent} />
+                            </span>
+                          </Link>
                         </div>
-                        <span className="min-w-0 flex-1 truncate">
-                          <span className="mr-1.5 text-xs font-medium text-muted">{pad(index + 1)}</span>
-                          {subTopic.title}
-                        </span>
-                        <span
-                          className={`shrink-0 ${isCurrent ? "text-teal-dark" : percent >= 100 ? "text-teal" : "text-ink/25"}`}
-                        >
-                          <StatusIcon isCurrent={isCurrent} percent={percent} />
-                        </span>
-                      </Link>
+
+                        {isSubExpanded && (
+                          <div className="ml-[46px] flex flex-col gap-0.5 pb-1">
+                            {subTopic.materials.map((material) => (
+                              <Link
+                                key={material.id}
+                                href={`/sessions/${subTopic.slug}#block-${material.id}`}
+                                className="flex items-center gap-1.5 rounded-lg px-1 py-1 text-xs font-medium text-teal-dark transition-colors hover:text-teal"
+                              >
+                                <span aria-hidden="true" className="shrink-0">
+                                  <DocIcon />
+                                </span>
+                                <span className="truncate">{material.label}</span>
+                              </Link>
+                            ))}
+                          </div>
+                        )}
+                      </div>
                     );
                   })}
                 </div>
