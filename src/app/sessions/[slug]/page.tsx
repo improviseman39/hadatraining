@@ -4,9 +4,10 @@ import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { mapSession, mapSessionWithBlocks } from "@/lib/supabase/mappers";
 import SessionContent, { type BlockProgress } from "@/components/SessionContent";
-import CategoryTreeSidebar from "@/components/CategoryTreeSidebar";
+import SessionsTreeSidebar from "@/components/SessionsTreeSidebar";
 import NotesPanel from "@/components/NotesPanel";
 import SessionLayout from "@/components/SessionLayout";
+import { categoryOrder } from "@/data/sessions";
 import type { SessionWithBlocks } from "@/types/content";
 
 type Crumb = { slug: string; title: string };
@@ -195,44 +196,43 @@ export default async function SessionPage(
         : null;
   }
 
-  // Full sidebar tree: every top-level session in this session's category,
-  // each with its own material blocks and sub-topics — lets the sidebar
-  // offer the whole category to browse (any session's material, any
-  // session's lectures), not just whatever's attached to the current page.
-  const { data: categoryTopLevelRows } = await supabase
+  // Full sidebar tree: every top-level session across every category, each
+  // with its own material blocks and sub-topics — lets the sidebar offer
+  // the whole site to browse inline (any category, any session's material,
+  // any session's lectures) without navigating away from the page.
+  const { data: allTopLevelRows } = await supabase
     .from("sessions")
     .select("*")
-    .eq("category", session.category)
     .is("parent_id", null)
     .order("position");
-  const categoryTopLevel = (categoryTopLevelRows ?? []).map(mapSession);
-  const categoryTopLevelIds = categoryTopLevel.map((s) => s.id);
+  const allTopLevel = (allTopLevelRows ?? []).map(mapSession);
+  const allTopLevelIds = allTopLevel.map((s) => s.id);
 
-  // categoryTopLevelIds is never empty in practice — this session's own
-  // module (itself, or its parent) is always one of the rows just fetched.
-  const [{ data: categoryBlockRows }, { data: categoryChildRows }] = await Promise.all([
-    supabase.from("content_blocks").select("id, title, session_id").in("session_id", categoryTopLevelIds).order("position"),
-    supabase.from("sessions").select("*").in("parent_id", categoryTopLevelIds).order("position"),
+  // allTopLevelIds is never empty in practice — this session's own module
+  // (itself, or its parent) is always one of the rows just fetched.
+  const [{ data: allBlockRows }, { data: allChildRows }] = await Promise.all([
+    supabase.from("content_blocks").select("id, title, session_id").in("session_id", allTopLevelIds).order("position"),
+    supabase.from("sessions").select("*").in("parent_id", allTopLevelIds).order("position"),
   ]);
 
   // Sub-topics get their own material list too (not just the module) — a
-  // second query since their ids aren't known until categoryChildRows above
+  // second query since their ids aren't known until allChildRows above
   // has come back. .in() with an empty array just yields no rows.
-  const categoryChildIds = (categoryChildRows ?? []).map((row) => row.id);
-  const { data: categoryChildBlockRows } = await supabase
+  const allChildIds = (allChildRows ?? []).map((row) => row.id);
+  const { data: allChildBlockRows } = await supabase
     .from("content_blocks")
     .select("id, title, session_id")
-    .in("session_id", categoryChildIds)
+    .in("session_id", allChildIds)
     .order("position");
 
   const materialsBySession = new Map<string, { id: string; title: string | null }[]>();
-  for (const row of [...(categoryBlockRows ?? []), ...(categoryChildBlockRows ?? [])]) {
+  for (const row of [...(allBlockRows ?? []), ...(allChildBlockRows ?? [])]) {
     const list = materialsBySession.get(row.session_id) ?? [];
     list.push({ id: row.id, title: row.title });
     materialsBySession.set(row.session_id, list);
   }
   const subTopicsBySession = new Map<string, ReturnType<typeof mapSession>[]>();
-  for (const row of categoryChildRows ?? []) {
+  for (const row of allChildRows ?? []) {
     if (!row.parent_id) continue;
     const list = subTopicsBySession.get(row.parent_id) ?? [];
     list.push(mapSession(row));
@@ -245,7 +245,14 @@ export default async function SessionPage(
       label: block.title ?? `Session material ${index + 1}`,
     }));
 
-  const categoryModules = categoryTopLevel.map((mod) => ({
+  const modulesByCategory = new Map<string, typeof allTopLevel>();
+  for (const mod of allTopLevel) {
+    const list = modulesByCategory.get(mod.category) ?? [];
+    list.push(mod);
+    modulesByCategory.set(mod.category, list);
+  }
+
+  const toModuleNode = (mod: (typeof allTopLevel)[number]) => ({
     id: mod.id,
     slug: mod.slug,
     title: mod.title,
@@ -260,22 +267,31 @@ export default async function SessionPage(
         imageUrl: sub.imageUrl,
         materials: toMaterials(sub.id),
       })),
-  }));
+  });
 
-  // Completion % per sub-topic across the WHOLE category tree (any of
-  // which could be showing in the sidebar once expanded) — one query
-  // against the same view the curriculum page already uses
-  // (my_session_progress, 0029_progress_views.sql).
+  // Ordered the same way the curriculum page's own category tabs are, so
+  // the sidebar's category order matches what a member already expects.
+  const categoriesTree = categoryOrder
+    .filter((name) => modulesByCategory.has(name))
+    .map((name) => ({
+      name,
+      href: `/curriculum?category=${encodeURIComponent(name)}`,
+      modules: (modulesByCategory.get(name) ?? []).map(toModuleNode),
+    }));
+  // Completion % per sub-topic across the WHOLE site tree (any of which
+  // could be showing in the sidebar once expanded) — one query against the
+  // same view the curriculum page already uses (my_session_progress,
+  // 0029_progress_views.sql).
   const completionBySlug: Record<string, number> = {};
   if (user) {
-    const allSubTopicIds = categoryModules.flatMap((mod) => mod.subTopics.map((s) => s.id));
+    const allSubTopicIds = categoriesTree.flatMap((cat) => cat.modules.flatMap((mod) => mod.subTopics.map((s) => s.id)));
     if (allSubTopicIds.length > 0) {
       const { data: rows } = await supabase
         .from("my_session_progress")
         .select("session_id, percent_complete")
         .in("session_id", allSubTopicIds);
       const idToSlug = new Map(
-        categoryModules.flatMap((mod) => mod.subTopics.map((s) => [s.id, s.slug] as const))
+        categoriesTree.flatMap((cat) => cat.modules.flatMap((mod) => mod.subTopics.map((s) => [s.id, s.slug] as const)))
       );
       for (const row of rows ?? []) {
         const slug = idToSlug.get(row.session_id);
@@ -398,12 +414,10 @@ export default async function SessionPage(
             </Link>
           )}
 
-          {categoryModules.length > 0 && (
-            <CategoryTreeSidebar
-              allSessionsHref="/curriculum"
-              category={session.category}
-              categoryHref={`/curriculum?category=${encodeURIComponent(session.category)}`}
-              modules={categoryModules}
+          {categoriesTree.length > 0 && (
+            <SessionsTreeSidebar
+              categories={categoriesTree}
+              currentCategory={session.category}
               currentModuleId={currentModuleId}
               currentSlug={session.slug}
               completionBySlug={completionBySlug}
