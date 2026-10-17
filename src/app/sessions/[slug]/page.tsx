@@ -400,6 +400,7 @@ export default async function SessionPage(
 
           {categoryModules.length > 0 && (
             <CategoryTreeSidebar
+              allSessionsHref="/curriculum"
               category={session.category}
               categoryHref={`/curriculum?category=${encodeURIComponent(session.category)}`}
               modules={categoryModules}

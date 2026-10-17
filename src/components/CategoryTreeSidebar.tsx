@@ -88,6 +88,7 @@ function StatusIcon({ isCurrent, percent }: { isCurrent: boolean; percent: numbe
  * material list just above, so only one material list shows at a time.
  */
 export default function CategoryTreeSidebar({
+  allSessionsHref,
   category,
   categoryHref,
   modules,
@@ -95,6 +96,10 @@ export default function CategoryTreeSidebar({
   currentSlug,
   completionBySlug = {},
 }: {
+  /** The full, unfiltered curriculum — one level up from the category, so
+   * the sidebar can offer the whole site's session list, not just this
+   * category's. */
+  allSessionsHref: string;
   category: string;
   categoryHref: string;
   modules: ModuleNode[];
@@ -120,12 +125,17 @@ export default function CategoryTreeSidebar({
 
   return (
     <div className="rounded-2xl border border-ink/10 bg-card p-4 shadow-sm">
-      <Link
-        href={categoryHref}
-        className="inline-block px-1 text-[11px] font-medium uppercase tracking-wide text-muted transition-colors hover:text-teal"
-      >
-        {category}
-      </Link>
+      <div className="flex flex-wrap items-center gap-1 px-1 text-[11px] font-medium uppercase tracking-wide">
+        <Link href={allSessionsHref} className="text-muted transition-colors hover:text-teal">
+          All sessions
+        </Link>
+        <span aria-hidden="true" className="text-ink/25">
+          /
+        </span>
+        <Link href={categoryHref} className="text-muted transition-colors hover:text-teal">
+          {category}
+        </Link>
+      </div>
 
       <div className="mt-2 flex flex-col gap-0.5">
         {modules.map((mod) => {
