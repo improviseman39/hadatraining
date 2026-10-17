@@ -51,6 +51,7 @@ export default function SubTopicsSidebar({
   moduleTitle,
   moduleSlug,
   isOnModulePage,
+  moduleMaterialHref,
   subTopics,
   currentSlug,
   completionBySlug = {},
@@ -65,6 +66,13 @@ export default function SubTopicsSidebar({
    * (not one of its sub-topics) — in that case the title is the current
    * page, so it renders as plain text rather than a link to itself. */
   isOnModulePage: boolean;
+  /** Set only from a sub-topic page, and only when the main session has its
+   * own content blocks (e.g. an overview handout) — a shortcut straight to
+   * that material, since it otherwise isn't reachable from this list at
+   * all (the list below only covers the sub-topics, not the module's own
+   * blocks). Not shown while already on the module's own page — that
+   * material is already visible in the main column there. */
+  moduleMaterialHref?: string | null;
   subTopics: Session[];
   currentSlug?: string;
   /** 0-100 completion per session slug, for the trailing status icon. */
@@ -88,10 +96,29 @@ export default function SubTopicsSidebar({
           {moduleTitle}
         </Link>
       )}
-      <p className="mt-1 px-1 text-xs text-muted">
+
+      {moduleMaterialHref && (
+        <Link
+          href={moduleMaterialHref}
+          className="mt-2 flex items-center gap-2 rounded-lg px-1 py-1 text-xs font-medium text-teal-dark transition-colors hover:text-teal"
+        >
+          <span
+            aria-hidden="true"
+            className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-teal/10"
+          >
+            <svg width="10" height="10" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <path d="M6 2h9l5 5v13a2 2 0 01-2 2H6a2 2 0 01-2-2V4a2 2 0 012-2z" stroke="currentColor" strokeWidth="1.75" />
+              <path d="M15 2v5h5" stroke="currentColor" strokeWidth="1.75" />
+            </svg>
+          </span>
+          Session material
+        </Link>
+      )}
+
+      <p className="mt-2 px-1 text-xs text-muted">
         {subTopics.length} Lecture{subTopics.length > 1 ? "s" : ""}
       </p>
-      <ul className="mt-3 flex flex-col gap-1">
+      <ul className="mt-3 flex flex-col gap-1 border-t border-ink/10 pt-3">
         {subTopics.map((subTopic, index) => {
           const isCurrent = subTopic.slug === currentSlug;
           const percent = completionBySlug[subTopic.slug] ?? 0;

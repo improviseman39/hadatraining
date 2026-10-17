@@ -155,19 +155,35 @@ export default async function SessionPage(
   // shows its photo too.
   let siblings: typeof children = [];
   let parentSession: typeof children[number] | null = null;
+  // Set only from a sub-topic page: the main session's own first content
+  // block, if it has any — lets the sidebar offer a direct shortcut to the
+  // module's own material (e.g. HA Filler's own overview slides) without
+  // first landing on its page and hunting for it there. Not needed while
+  // already viewing the module's own page, since that material is right
+  // there in the main column already.
+  let moduleMaterialBlockId: string | null = null;
   if (children.length === 0 && session.parentId) {
     const [{ data: siblingRows }, { data: parentRow }] = await Promise.all([
       supabase.from("sessions").select("*").eq("parent_id", session.parentId).order("position"),
-      supabase.from("sessions").select("*").eq("id", session.parentId).single(),
+      supabase
+        .from("sessions")
+        .select("*, content_blocks(id)")
+        .eq("id", session.parentId)
+        .order("position", { foreignTable: "content_blocks" })
+        .single(),
     ]);
     siblings = (siblingRows ?? []).map(mapSession);
     parentSession = parentRow ? mapSession(parentRow) : null;
+    const parentBlocks = (parentRow as { content_blocks?: { id: string }[] } | null)?.content_blocks ?? [];
+    moduleMaterialBlockId = parentBlocks[0]?.id ?? null;
   }
 
   const subTopics = children.length > 0 ? children : siblings;
   const isSiblingList = children.length === 0 && siblings.length > 0;
   const moduleTitle = isSiblingList ? (parentSession?.title ?? session.title) : session.title;
   const moduleSlug = isSiblingList ? (parentSession?.slug ?? session.slug) : session.slug;
+  const moduleMaterialHref =
+    isSiblingList && moduleMaterialBlockId ? `/sessions/${moduleSlug}#block-${moduleMaterialBlockId}` : null;
 
   // Prev/next: a top-level session pages through other top-level sessions;
   // a sub-topic pages through its siblings instead (siblings already
@@ -340,6 +356,7 @@ export default async function SessionPage(
               moduleTitle={moduleTitle}
               moduleSlug={moduleSlug}
               isOnModulePage={!isSiblingList}
+              moduleMaterialHref={moduleMaterialHref}
               subTopics={subTopics}
               currentSlug={session.slug}
               completionBySlug={completionBySlug}
