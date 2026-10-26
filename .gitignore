@@ -20,8 +20,11 @@ yarn-error.log*
 # local env files
 .env*.local
 
-# local Claude Code settings
-.claude/
+# local Claude Code settings - except shared slash commands, which are
+# meant to be versioned and used by anyone working in this repo
+.claude/*
+!.claude/commands/
+!.claude/commands/**
 
 # typescript
 *.tsbuildinfo
