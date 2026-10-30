@@ -35,7 +35,10 @@ export async function sendVerificationCode() {
   const code = generateCode();
   const expiresAt = new Date(Date.now() + OTP_TTL_MINUTES * 60_000).toISOString();
 
-  const { error } = await supabase.from("login_otp_codes").insert({
+  // login_otp_codes and profiles' security flags are server-only (0036) —
+  // the signed-in user is checked above, then the service role does the write.
+  const admin = createAdminClient();
+  const { error } = await admin.from("login_otp_codes").insert({
     user_id: user.id,
     code_hash: hashCode(code),
     expires_at: expiresAt,
@@ -60,7 +63,8 @@ export async function verifyCode(formData: FormData) {
   // Look up the most recent outstanding code for this user regardless of
   // what was submitted, so a wrong guess still counts against that code's
   // attempt budget instead of silently costing nothing.
-  const { data: outstanding } = await supabase
+  const admin = createAdminClient();
+  const { data: outstanding } = await admin
     .from("login_otp_codes")
     .select("id, code_hash, expires_at, attempt_count")
     .eq("user_id", user.id)
@@ -80,7 +84,7 @@ export async function verifyCode(formData: FormData) {
   }
 
   if (outstanding.code_hash !== hashCode(code)) {
-    await supabase
+    await admin
       .from("login_otp_codes")
       .update({ attempt_count: outstanding.attempt_count + 1 })
       .eq("id", outstanding.id);
@@ -93,11 +97,11 @@ export async function verifyCode(formData: FormData) {
     };
   }
 
-  await supabase
+  await admin
     .from("login_otp_codes")
     .update({ consumed_at: new Date().toISOString() })
     .eq("id", outstanding.id);
-  const { error } = await supabase
+  const { error } = await admin
     .from("profiles")
     .update({ email_verified_at: new Date().toISOString() })
     .eq("id", user.id);
@@ -126,7 +130,7 @@ export async function resetMyMfa() {
   } = await supabase.auth.getUser();
   if (!user?.email) return { error: "You must be signed in." };
 
-  const { data: recentCode } = await supabase
+  const { data: recentCode } = await createAdminClient()
     .from("login_otp_codes")
     .select("consumed_at")
     .eq("user_id", user.id)
@@ -180,7 +184,7 @@ export async function completePasswordChange() {
   } = await supabase.auth.getUser();
   if (!user) return { error: "You must be signed in." };
 
-  const { error } = await supabase
+  const { error } = await createAdminClient()
     .from("profiles")
     .update({ must_change_password: false })
     .eq("id", user.id);

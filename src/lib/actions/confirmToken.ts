@@ -1,6 +1,7 @@
 "use server";
 
 import { createClient } from "@/lib/supabase/server";
+import { createAdminClient } from "@/lib/supabase/admin";
 
 type VerifiableType = "invite" | "recovery" | "email_change" | "signup" | "magiclink";
 
@@ -35,7 +36,7 @@ export async function confirmToken(
   // step order (verify → set password → 2FA) resolves correctly from a
   // plain "/" redirect instead of a page-specific shortcut that skips it.
   if (type === "invite" && user) {
-    await supabase
+    await createAdminClient()
       .from("profiles")
       .update({ email_verified_at: new Date().toISOString() })
       .eq("id", user.id);

@@ -28,6 +28,19 @@ export async function signUp(formData: FormData) {
   if (!privacyAccepted) return { error: "Please agree to the Privacy Policy to continue." };
 
   const admin = createAdminClient();
+
+  // The /signup page hides the form when registration is closed, but a
+  // Server Action can be called directly — so the switch is enforced here
+  // too. Fails open when the row is missing, same as the page.
+  const { data: settings } = await admin
+    .from("site_settings")
+    .select("public_signup_enabled")
+    .eq("id", true)
+    .single();
+  if (!(settings?.public_signup_enabled ?? true)) {
+    return { error: "Self-registration isn't open right now." };
+  }
+
   const { error: createError } = await admin.auth.admin.createUser({
     email,
     password,
@@ -70,7 +83,7 @@ export async function signUp(formData: FormData) {
     return { error: "Account created, but couldn't log you in automatically. Try logging in." };
   }
 
-  await supabase
+  await admin
     .from("profiles")
     .update({ must_change_password: false })
     .eq("id", signInData.user.id);
@@ -78,7 +91,7 @@ export async function signUp(formData: FormData) {
   // Separate call, deliberately: these columns are from a later migration
   // (0035_privacy_consent.sql). If that migration isn't applied yet in some
   // environment, this failing must never take must_change_password with it.
-  await supabase
+  await admin
     .from("profiles")
     .update({
       privacy_accepted_at: new Date().toISOString(),
