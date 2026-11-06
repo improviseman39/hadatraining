@@ -16,20 +16,40 @@ export default function SignupForm() {
   const [privacyAccepted, setPrivacyAccepted] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [alreadyExists, setAlreadyExists] = useState(false);
+  // True once registering turned out to resume an unfinished earlier
+  // attempt — a code was emailed and the form now asks for it.
+  const [needsCode, setNeedsCode] = useState(false);
+  const [notice, setNotice] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
 
-  function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-    const formData = new FormData(event.currentTarget);
+  function submit(formData: FormData) {
     setError(null);
+    setNotice(null);
     setAlreadyExists(false);
     startTransition(async () => {
       const result = await signUp(formData);
-      if (result?.error) {
+      if (!result) return;
+      if (result.needsCode) setNeedsCode(true);
+      if ("notice" in result) setNotice(result.notice);
+      if ("error" in result) {
         setError(result.error);
         setAlreadyExists(Boolean(result.alreadyExists));
       }
     });
+  }
+
+  function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    submit(new FormData(event.currentTarget));
+  }
+
+  // Same form, no code: the server treats it as "send me a fresh one".
+  function handleResendCode(event: React.MouseEvent<HTMLButtonElement>) {
+    const form = event.currentTarget.form;
+    if (!form) return;
+    const formData = new FormData(form);
+    formData.delete("code");
+    submit(formData);
   }
 
   return (
@@ -148,6 +168,34 @@ export default function SignupForm() {
         )}
       </div>
 
+      {needsCode && (
+        <div className="rounded-xl border border-teal/30 bg-porcelain/60 p-4">
+          {notice && <p className="mb-3 text-sm text-ink">{notice}</p>}
+          <label htmlFor="code" className={labelClass}>Verification code</label>
+          <input
+            id="code"
+            name="code"
+            inputMode="numeric"
+            autoComplete="one-time-code"
+            required
+            maxLength={6}
+            placeholder="123456"
+            onChange={(event) => {
+              event.target.value = event.target.value.replace(/\D/g, "");
+            }}
+            className={`${inputClass} text-center text-lg tracking-[0.3em] placeholder:tracking-normal`}
+          />
+          <button
+            type="button"
+            onClick={handleResendCode}
+            disabled={pending}
+            className="mt-3 text-sm font-medium text-teal hover:underline disabled:opacity-50"
+          >
+            Send me a new code
+          </button>
+        </div>
+      )}
+
       {error && (
         <p role="alert" className="text-sm font-medium text-terracotta">
           {error}
@@ -167,7 +215,9 @@ export default function SignupForm() {
         disabled={pending || !privacyAccepted}
         className="mt-2 w-full rounded-full bg-ink px-6 py-3 text-sm font-medium text-porcelain transition-colors hover:bg-teal disabled:opacity-70"
       >
-        {pending ? "Creating your account…" : "Create account"}
+        {pending
+          ? needsCode ? "Checking your code…" : "Creating your account…"
+          : needsCode ? "Verify and finish registering" : "Create account"}
       </button>
 
       <p className="text-center text-xs leading-relaxed text-muted">
